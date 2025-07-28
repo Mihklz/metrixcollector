@@ -17,6 +17,7 @@ func TestUpdateHandler_ValidGauge(t *testing.T) {
 	handler(w, req)
 
 	resp := w.Result()
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
 	}
@@ -35,7 +36,10 @@ func TestUpdateHandler_UnsupportedMethod(t *testing.T) {
 
 	handler(w, req)
 
-	if w.Result().StatusCode != http.StatusMethodNotAllowed {
+	resp := w.Result()
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Error("expected 405 Method Not Allowed")
 	}
 }
@@ -49,7 +53,10 @@ func TestUpdateHandler_InvalidPath(t *testing.T) {
 
 	handler(w, req)
 
-	if w.Result().StatusCode != http.StatusNotFound {
+	resp := w.Result()
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNotFound {
 		t.Error("expected 404 Not Found")
 	}
 }
