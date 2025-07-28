@@ -2,11 +2,12 @@ package handler
 
 import (
 	"github.com/Mihklz/metrixcollector/internal/repository"
+	"log"
 	"net/http"
 	"strings"
 )
 
-func NewUpdateHandler(storage *repository.MemStorage) http.HandlerFunc {
+func NewUpdateHandler(storage repository.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -27,6 +28,7 @@ func NewUpdateHandler(storage *repository.MemStorage) http.HandlerFunc {
 			return
 		}
 
+		log.Printf("received metric: %s %s = %s", metricType, name, value)
 		w.WriteHeader(http.StatusOK)
 	}
 }
