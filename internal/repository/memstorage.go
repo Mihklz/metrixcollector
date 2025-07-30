@@ -46,3 +46,38 @@ func (m *MemStorage) Update(metricType, name, value string) error {
 
 	return nil
 }
+func (m *MemStorage) GetGauge(name string) (Gauge, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	val, ok := m.Gauges[name]
+	return val, ok
+}
+
+func (m *MemStorage) GetCounter(name string) (Counter, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	val, ok := m.Counters[name]
+	return val, ok
+}
+
+func (m *MemStorage) GetAllGauges() map[string]Gauge {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	copyMap := make(map[string]Gauge, len(m.Gauges))
+	for k, v := range m.Gauges {
+		copyMap[k] = v
+	}
+	return copyMap
+}
+
+func (m *MemStorage) GetAllCounters() map[string]Counter {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	copyMap := make(map[string]Counter, len(m.Counters))
+	for k, v := range m.Counters {
+		copyMap[k] = v
+	}
+	return copyMap
+}
