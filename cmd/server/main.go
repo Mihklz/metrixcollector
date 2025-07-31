@@ -10,6 +10,8 @@ import (
 )
 
 func main() {
+	parseFlags() // читаем -a
+
 	storage := repository.NewMemStorage()
 
 	// Инициализируем chi-роутер
@@ -26,9 +28,8 @@ func main() {
 	
 
 	// Запускаем сервер
-	log.Println("Starting server at :8080")
-	err := http.ListenAndServe(":8080", r)
-	if err != nil {
+	log.Printf("Starting server at %s", flagRunAddr)
+	if err := http.ListenAndServe(flagRunAddr, r); err != nil {
 		log.Fatalf("server failed: %v", err)
 	}
 }

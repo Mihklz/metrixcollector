@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -9,14 +10,27 @@ import (
 	"github.com/Mihklz/metrixcollector/internal/agent"
 )
 
-const (
-	pollInterval   = 2 * time.Second
-	reportInterval = 10 * time.Second
-	serverAddr     = "http://localhost:8080"
+var (
+	flagServerAddr string
+	flagPollSec    int
+	flagReportSec  int
 )
 
+func init() {
+	flag.StringVar(&flagServerAddr, "a", "localhost:8080", "address of HTTP server")
+	flag.IntVar(&flagPollSec, "p", 2, "poll interval in seconds")
+	flag.IntVar(&flagReportSec, "r", 10, "report interval in seconds")
+}
+
 func main() {
+	flag.Parse()
+
+	pollInterval := time.Duration(flagPollSec) * time.Second
+	reportInterval := time.Duration(flagReportSec) * time.Second
+	serverAddr := "http://" + flagServerAddr
+
 	log.Println("Agent started")
+	log.Printf("Poll interval: %v, Report interval: %v, Server: %s", pollInterval, reportInterval, serverAddr)
 
 	tickerPoll := time.NewTicker(pollInterval)
 	tickerReport := time.NewTicker(reportInterval)
@@ -27,13 +41,13 @@ func main() {
 		select {
 		case <-tickerPoll.C:
 			currentMetrics = agent.Collect()
-
 		case <-tickerReport.C:
-			go sendMetrics(currentMetrics)
+			go sendMetrics(serverAddr, currentMetrics)
 		}
 	}
 }
-func sendMetrics(metrics agent.MetricsSet) {
+
+func sendMetrics(serverAddr string, metrics agent.MetricsSet) {
 	client := &http.Client{}
 
 	for name, value := range metrics.Gauges {
@@ -53,7 +67,6 @@ func sendMetrics(metrics agent.MetricsSet) {
 		_ = resp.Body.Close()
 	}
 
-	// Отправка counter PollCount
 	url := fmt.Sprintf("%s/update/counter/PollCount/%d", serverAddr, metrics.PollCount)
 	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
