@@ -7,9 +7,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/Mihklz/metrixcollector/internal/handler"
 	"github.com/Mihklz/metrixcollector/internal/repository"
+	"github.com/Mihklz/metrixcollector/internal/config"
 )
 
 func main() {
+	cfg := config.LoadServerConfig()
+
 	storage := repository.NewMemStorage()
 
 	// Инициализируем chi-роутер
@@ -26,9 +29,8 @@ func main() {
 	
 
 	// Запускаем сервер
-	log.Println("Starting server at :8080")
-	err := http.ListenAndServe(":8080", r)
-	if err != nil {
+	log.Printf("Starting server at %s", cfg.RunAddr)
+	if err := http.ListenAndServe(cfg.RunAddr, r); err != nil {
 		log.Fatalf("server failed: %v", err)
 	}
 }
