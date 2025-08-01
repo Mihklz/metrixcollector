@@ -7,10 +7,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/Mihklz/metrixcollector/internal/handler"
 	"github.com/Mihklz/metrixcollector/internal/repository"
+	"github.com/Mihklz/metrixcollector/internal/config"
 )
 
 func main() {
-	parseFlags() // читаем -a
+	cfg := config.LoadServerConfig()
 
 	storage := repository.NewMemStorage()
 
@@ -28,8 +29,8 @@ func main() {
 	
 
 	// Запускаем сервер
-	log.Printf("Starting server at %s", flagRunAddr)
-	if err := http.ListenAndServe(flagRunAddr, r); err != nil {
+	log.Printf("Starting server at %s", cfg.RunAddr)
+	if err := http.ListenAndServe(cfg.RunAddr, r); err != nil {
 		log.Fatalf("server failed: %v", err)
 	}
 }

@@ -1,84 +1,76 @@
 package main
 
 import (
-	"flag"
-	"fmt"
+	"context"
 	"log"
-	"net/http"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/Mihklz/metrixcollector/internal/agent"
+	"github.com/Mihklz/metrixcollector/internal/config"
 )
-
-var (
-	flagServerAddr string
-	flagPollSec    int
-	flagReportSec  int
-)
-
-func init() {
-	flag.StringVar(&flagServerAddr, "a", "localhost:8080", "address of HTTP server")
-	flag.IntVar(&flagPollSec, "p", 2, "poll interval in seconds")
-	flag.IntVar(&flagReportSec, "r", 10, "report interval in seconds")
-}
 
 func main() {
-	flag.Parse()
-
-	pollInterval := time.Duration(flagPollSec) * time.Second
-	reportInterval := time.Duration(flagReportSec) * time.Second
-	serverAddr := "http://" + flagServerAddr
+	cfg := config.LoadAgentConfig()
 
 	log.Println("Agent started")
-	log.Printf("Poll interval: %v, Report interval: %v, Server: %s", pollInterval, reportInterval, serverAddr)
+	log.Printf("Poll interval: %v, Report interval: %v, Server: %s", cfg.PollInterval, cfg.ReportInterval, cfg.ServerAddr)
 
-	tickerPoll := time.NewTicker(pollInterval)
-	tickerReport := time.NewTicker(reportInterval)
+	// Создаем контекст с отменой для graceful shutdown
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Обработка сигналов для graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	// Создаем sender для отправки метрик
+	sender := agent.NewMetricsSender(cfg.ServerAddr)
+
+	// Запускаем основной цикл в горутине
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go runAgent(ctx, &wg, cfg, sender)
+
+	// Ждем сигнала завершения
+	<-sigChan
+	log.Println("Shutting down agent...")
+	cancel()
+	wg.Wait()
+	log.Println("Agent stopped")
+}
+
+func runAgent(ctx context.Context, wg *sync.WaitGroup, cfg *config.AgentConfig, sender *agent.MetricsSender) {
+	defer wg.Done()
+
+	tickerPoll := time.NewTicker(cfg.PollInterval)
+	tickerReport := time.NewTicker(cfg.ReportInterval)
+	defer tickerPoll.Stop()
+	defer tickerReport.Stop()
 
 	var currentMetrics agent.MetricsSet
+	var reportWg sync.WaitGroup
 
 	for {
 		select {
+		case <-ctx.Done():
+			// Ждем завершения всех отправок метрик
+			reportWg.Wait()
+			return
 		case <-tickerPoll.C:
 			currentMetrics = agent.Collect()
 		case <-tickerReport.C:
-			go sendMetrics(serverAddr, currentMetrics)
+			// Запускаем отправку метрик в отдельной горутине с контролем
+			reportWg.Add(1)
+			go func(metrics agent.MetricsSet) {
+				defer reportWg.Done()
+				if err := sender.SendMetrics(ctx, metrics); err != nil {
+					log.Printf("failed to send metrics: %v", err)
+				}
+			}(currentMetrics)
 		}
 	}
-}
-
-func sendMetrics(serverAddr string, metrics agent.MetricsSet) {
-	client := &http.Client{}
-
-	for name, value := range metrics.Gauges {
-		url := fmt.Sprintf("%s/update/gauge/%s/%f", serverAddr, name, value)
-		req, err := http.NewRequest(http.MethodPost, url, nil)
-		if err != nil {
-			log.Printf("create gauge request error: %v", err)
-			continue
-		}
-		req.Header.Set("Content-Type", "text/plain")
-
-		resp, err := client.Do(req)
-		if err != nil {
-			log.Printf("send gauge error: %v", err)
-			continue
-		}
-		_ = resp.Body.Close()
-	}
-
-	url := fmt.Sprintf("%s/update/counter/PollCount/%d", serverAddr, metrics.PollCount)
-	req, err := http.NewRequest(http.MethodPost, url, nil)
-	if err != nil {
-		log.Printf("create counter request error: %v", err)
-		return
-	}
-	req.Header.Set("Content-Type", "text/plain")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Printf("send counter error: %v", err)
-		return
-	}
-	_ = resp.Body.Close()
 }
