@@ -5,18 +5,33 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/Mihklz/metrixcollector/internal/handler"
-	"github.com/Mihklz/metrixcollector/internal/repository"
+	"go.uber.org/zap"
+
 	"github.com/Mihklz/metrixcollector/internal/config"
+	"github.com/Mihklz/metrixcollector/internal/handler"
+	"github.com/Mihklz/metrixcollector/internal/logger"
+	"github.com/Mihklz/metrixcollector/internal/repository"
 )
 
 func main() {
+	// Инициализируем логгер
+	if err := logger.Initialize(); err != nil {
+		log.Fatalf("Failed to initialize logger: %v", err)
+	}
+	// Обязательно сбрасываем буферы логгера при завершении программы
+	defer logger.Log.Sync()
+
 	cfg := config.LoadServerConfig()
 
 	storage := repository.NewMemStorage()
 
 	// Инициализируем chi-роутер
 	r := chi.NewRouter()
+
+	// Добавляем middleware для логирования ко всем роутам
+	r.Use(func(next http.Handler) http.Handler {
+		return logger.WithLogging(next)
+	})
 
 	// POST /update/{type}/{name}/{value}
 	r.Post("/update/{type}/{name}/{value}", handler.NewUpdateHandler(storage))
@@ -26,11 +41,17 @@ func main() {
 
 	// GET /
 	r.Get("/", handler.NewRootHandler(storage))
-	
+
+	// Логируем запуск сервера
+	logger.Log.Info("Starting metrics collector server",
+		zap.String("address", cfg.RunAddr),
+	)
 
 	// Запускаем сервер
-	log.Printf("Starting server at %s", cfg.RunAddr)
 	if err := http.ListenAndServe(cfg.RunAddr, r); err != nil {
-		log.Fatalf("server failed: %v", err)
+		logger.Log.Fatal("Server failed to start",
+			zap.Error(err),
+			zap.String("address", cfg.RunAddr),
+		)
 	}
 }
