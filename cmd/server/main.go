@@ -46,9 +46,11 @@ func main() {
 	// === Новые JSON API эндпоинты ===
 	// POST /update - принимает метрики в JSON формате
 	r.Post("/update", handler.NewJSONUpdateHandler(storage))
+	r.Post("/update/", handler.NewJSONUpdateHandler(storage))
 
 	// POST /value - возвращает метрики в JSON формате
 	r.Post("/value", handler.NewJSONValueHandler(storage))
+	r.Post("/value/", handler.NewJSONValueHandler(storage))
 
 	// Логируем запуск сервера
 	logger.Log.Info("Starting metrics collector server",

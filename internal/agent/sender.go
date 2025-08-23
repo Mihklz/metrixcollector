@@ -124,4 +124,4 @@ func (s *MetricsSender) sendCounter(name string, value int64) error {
 	}
 
 	return nil
-} 
+}
