@@ -1,11 +1,15 @@
 package agent
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"time"
+
+	models "github.com/Mihklz/metrixcollector/internal/model"
 )
 
 type MetricsSender struct {
@@ -53,12 +57,26 @@ func (s *MetricsSender) SendMetrics(ctx context.Context, metrics MetricsSet) err
 }
 
 func (s *MetricsSender) sendGauge(name string, value float64) error {
-	url := fmt.Sprintf("%s/update/gauge/%s/%f", s.serverAddr, name, value)
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+	// Создаём структуру для JSON API
+	metric := models.Metrics{
+		ID:    name,
+		MType: models.Gauge,
+		Value: &value,
+	}
+
+	// Сериализуем в JSON
+	jsonData, err := json.Marshal(metric)
+	if err != nil {
+		return fmt.Errorf("marshal gauge metric error: %w", err)
+	}
+
+	// Создаём POST запрос к /update
+	url := fmt.Sprintf("%s/update", s.serverAddr)
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("create gauge request error: %w", err)
 	}
-	req.Header.Set("Content-Type", "text/plain")
+	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := s.client.Do(req)
 	if err != nil {
@@ -74,12 +92,26 @@ func (s *MetricsSender) sendGauge(name string, value float64) error {
 }
 
 func (s *MetricsSender) sendCounter(name string, value int64) error {
-	url := fmt.Sprintf("%s/update/counter/%s/%d", s.serverAddr, name, value)
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+	// Создаём структуру для JSON API
+	metric := models.Metrics{
+		ID:    name,
+		MType: models.Counter,
+		Delta: &value,
+	}
+
+	// Сериализуем в JSON
+	jsonData, err := json.Marshal(metric)
+	if err != nil {
+		return fmt.Errorf("marshal counter metric error: %w", err)
+	}
+
+	// Создаём POST запрос к /update
+	url := fmt.Sprintf("%s/update", s.serverAddr)
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("create counter request error: %w", err)
 	}
-	req.Header.Set("Content-Type", "text/plain")
+	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := s.client.Do(req)
 	if err != nil {
