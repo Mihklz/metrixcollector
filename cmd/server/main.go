@@ -10,6 +10,7 @@ import (
 	"github.com/Mihklz/metrixcollector/internal/config"
 	"github.com/Mihklz/metrixcollector/internal/handler"
 	"github.com/Mihklz/metrixcollector/internal/logger"
+	"github.com/Mihklz/metrixcollector/internal/middleware"
 	"github.com/Mihklz/metrixcollector/internal/repository"
 )
 
@@ -32,6 +33,9 @@ func main() {
 	r.Use(func(next http.Handler) http.Handler {
 		return logger.WithLogging(next)
 	})
+
+	// Добавляем middleware для gzip сжатия/декомпрессии
+	r.Use(middleware.WithGzip)
 
 	// === Старые URL-based эндпоинты (для совместимости) ===
 	// POST /update/{type}/{name}/{value}
