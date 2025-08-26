@@ -1,10 +1,13 @@
 package handler
 
 import (
-	"github.com/Mihklz/metrixcollector/internal/repository"
-	"log"
 	"net/http"
 	"strings"
+
+	"go.uber.org/zap"
+
+	"github.com/Mihklz/metrixcollector/internal/logger"
+	"github.com/Mihklz/metrixcollector/internal/repository"
 )
 
 func NewUpdateHandler(storage repository.Storage) http.HandlerFunc {
@@ -28,7 +31,11 @@ func NewUpdateHandler(storage repository.Storage) http.HandlerFunc {
 			return
 		}
 
-		log.Printf("received metric: %s %s = %s", metricType, name, value)
+		logger.Log.Info("Metric received and saved",
+			zap.String("type", metricType),
+			zap.String("name", name),
+			zap.String("value", value),
+		)
 		w.WriteHeader(http.StatusOK)
 	}
 }

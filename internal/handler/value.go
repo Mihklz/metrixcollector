@@ -1,10 +1,13 @@
 package handler
 
 import (
-	"github.com/Mihklz/metrixcollector/internal/repository"
 	"net/http"
-	"github.com/go-chi/chi/v5"
 	"strconv"
+
+	"github.com/go-chi/chi/v5"
+
+	models "github.com/Mihklz/metrixcollector/internal/model"
+	"github.com/Mihklz/metrixcollector/internal/repository"
 )
 
 func NewValueHandler(storage repository.Storage) http.HandlerFunc {
@@ -13,7 +16,7 @@ func NewValueHandler(storage repository.Storage) http.HandlerFunc {
 		metricName := chi.URLParam(r, "name")
 
 		switch metricType {
-		case "gauge":
+		case models.Gauge:
 			if val, ok := storage.GetGauge(metricName); ok {
 				w.Header().Set("Content-Type", "text/plain")
 				w.WriteHeader(http.StatusOK)
@@ -21,7 +24,7 @@ func NewValueHandler(storage repository.Storage) http.HandlerFunc {
 				return
 			}
 			http.NotFound(w, r)
-		case "counter":
+		case models.Counter:
 			if val, ok := storage.GetCounter(metricName); ok {
 				w.Header().Set("Content-Type", "text/plain")
 				w.WriteHeader(http.StatusOK)

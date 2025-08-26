@@ -6,4 +6,7 @@ type Storage interface {
 	GetCounter(name string) (Counter, bool)
 	GetAllGauges() map[string]Gauge
 	GetAllCounters() map[string]Counter
+	// Новые методы для файлового хранения
+	SaveToFile(filename string) error
+	LoadFromFile(filename string) error
 }
