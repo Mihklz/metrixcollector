@@ -92,10 +92,7 @@ func (s *SyncStorage) Update(metricType, name, value string) error {
 	}
 
 	// Синхронное сохранение в файл через сервис
-	if saveErr := s.fileService.SaveSync(); saveErr != nil {
-		// Логирование уже внутри fileService.SaveSync()
-		// Не возвращаем ошибку, чтобы не прерывать работу
-	}
+	_ = s.fileService.SaveSync() // игнорируем ошибку для fail-safe работы
 
 	return nil
 }

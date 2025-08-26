@@ -49,7 +49,7 @@ func ProvideFileStorageService(cfg *config.ServerConfig, storage repository.Stor
 
 // ProvideServer предоставляет HTTP сервер
 func ProvideServer(cfg *config.ServerConfig, baseStorage repository.Storage, fileService *service.FileStorageService) *server.Server {
-	var storage repository.Storage = baseStorage
+	var storage = baseStorage
 
 	// Если интервал равен 0, используем синхронное сохранение
 	if cfg.StoreInterval == 0 {
@@ -78,10 +78,7 @@ func (s *SyncStorageWithDI) Update(metricType, name, value string) error {
 	}
 
 	// Синхронное сохранение в файл через внедренный сервис
-	if saveErr := s.fileService.SaveSync(); saveErr != nil {
-		// Логирование уже внутри fileService.SaveSync()
-		// Не возвращаем ошибку, чтобы не прерывать работу
-	}
+	_ = s.fileService.SaveSync() // игнорируем ошибку для fail-safe работы
 
 	return nil
 }

@@ -11,9 +11,16 @@ import (
 
 	"github.com/Mihklz/metrixcollector/internal/agent"
 	"github.com/Mihklz/metrixcollector/internal/config"
+	"github.com/Mihklz/metrixcollector/internal/logger"
 )
 
 func main() {
+	// Инициализируем логгер
+	if err := logger.Initialize(); err != nil {
+		log.Fatalf("Failed to initialize logger: %v", err)
+	}
+	defer logger.Log.Sync()
+
 	cfg := config.LoadAgentConfig()
 
 	log.Println("Agent started")
