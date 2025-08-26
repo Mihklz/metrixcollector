@@ -32,13 +32,13 @@ func (m *MemStorage) Update(metricType, name, value string) error {
 	defer m.mu.Unlock()
 
 	switch metricType {
-	case "gauge":
+	case models.Gauge:
 		v, err := strconv.ParseFloat(value, 64)
 		if err != nil {
 			return fmt.Errorf("invalid gauge value: %w", err)
 		}
 		m.Gauges[name] = Gauge(v)
-	case "counter":
+	case models.Counter:
 		v, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
 			return fmt.Errorf("invalid counter value: %w", err)
@@ -120,7 +120,7 @@ func (m *MemStorage) SaveToFile(filename string) error {
 	}
 
 	// Записываем в файл
-	err = os.WriteFile(filename, data, 0666)
+	err = os.WriteFile(filename, data, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
 	}

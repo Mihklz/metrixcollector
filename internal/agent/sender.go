@@ -6,10 +6,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
+	"go.uber.org/zap"
+
+	"github.com/Mihklz/metrixcollector/internal/logger"
 	models "github.com/Mihklz/metrixcollector/internal/model"
 )
 
@@ -55,7 +57,11 @@ func (s *MetricsSender) SendMetrics(ctx context.Context, metrics MetricsSet) err
 		}
 
 		if err := s.sendGauge(name, value); err != nil {
-			log.Printf("failed to send gauge %s: %v", name, err)
+			logger.Log.Error("Failed to send gauge metric",
+				zap.String("name", name),
+				zap.Float64("value", value),
+				zap.Error(err),
+			)
 			// Продолжаем отправку остальных метрик
 		}
 	}
@@ -68,7 +74,11 @@ func (s *MetricsSender) SendMetrics(ctx context.Context, metrics MetricsSet) err
 	}
 
 	if err := s.sendCounter("PollCount", metrics.PollCount); err != nil {
-		log.Printf("failed to send counter PollCount: %v", err)
+		logger.Log.Error("Failed to send counter metric",
+			zap.String("name", "PollCount"),
+			zap.Int64("value", metrics.PollCount),
+			zap.Error(err),
+		)
 		return err
 	}
 

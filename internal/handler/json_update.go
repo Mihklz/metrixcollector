@@ -12,50 +12,59 @@ import (
 	"github.com/Mihklz/metrixcollector/internal/repository"
 )
 
+// validateJSONRequest проверяет HTTP метод, Content-Type и декодирует JSON
+func validateJSONRequest(w http.ResponseWriter, r *http.Request) (*models.Metrics, bool) {
+	// Проверяем HTTP метод
+	if r.Method != http.MethodPost {
+		logger.Log.Info("Invalid method for JSON API",
+			zap.String("method", r.Method),
+			zap.String("expected", http.MethodPost),
+		)
+		http.Error(w, "only POST method allowed", http.StatusMethodNotAllowed)
+		return nil, false
+	}
+
+	// Проверяем Content-Type
+	contentType := r.Header.Get("Content-Type")
+	if contentType != "application/json" {
+		logger.Log.Info("Invalid content type",
+			zap.String("content_type", contentType),
+			zap.String("expected", "application/json"),
+		)
+		http.Error(w, "content type must be application/json", http.StatusBadRequest)
+		return nil, false
+	}
+
+	// Декодируем JSON из тела запроса
+	var metric models.Metrics
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&metric); err != nil {
+		logger.Log.Info("Failed to decode JSON", zap.Error(err))
+		http.Error(w, "invalid JSON format", http.StatusBadRequest)
+		return nil, false
+	}
+
+	// Валидируем обязательные поля
+	if metric.ID == "" {
+		http.Error(w, "metric ID is required", http.StatusBadRequest)
+		return nil, false
+	}
+
+	if metric.MType == "" {
+		http.Error(w, "metric type is required", http.StatusBadRequest)
+		return nil, false
+	}
+
+	return &metric, true
+}
+
 // NewJSONUpdateHandler создаёт обработчик для POST /update (JSON API)
 // Принимает метрики в формате JSON и сохраняет их в хранилище
 func NewJSONUpdateHandler(storage repository.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Проверяем HTTP метод
-		if r.Method != http.MethodPost {
-			logger.Log.Info("Invalid method for JSON update",
-				zap.String("method", r.Method),
-				zap.String("expected", http.MethodPost),
-			)
-			http.Error(w, "only POST method allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		// Проверяем Content-Type
-		contentType := r.Header.Get("Content-Type")
-		if contentType != "application/json" {
-			logger.Log.Info("Invalid content type",
-				zap.String("content_type", contentType),
-				zap.String("expected", "application/json"),
-			)
-			http.Error(w, "content type must be application/json", http.StatusBadRequest)
-			return
-		}
-
-		// Декодируем JSON из тела запроса
-		var metric models.Metrics
-		decoder := json.NewDecoder(r.Body)
-		if err := decoder.Decode(&metric); err != nil {
-			logger.Log.Info("Failed to decode JSON",
-				zap.Error(err),
-			)
-			http.Error(w, "invalid JSON format", http.StatusBadRequest)
-			return
-		}
-
-		// Валидируем обязательные поля
-		if metric.ID == "" {
-			http.Error(w, "metric ID is required", http.StatusBadRequest)
-			return
-		}
-
-		if metric.MType == "" {
-			http.Error(w, "metric type is required", http.StatusBadRequest)
+		// Общая валидация и декодирование
+		metric, ok := validateJSONRequest(w, r)
+		if !ok {
 			return
 		}
 

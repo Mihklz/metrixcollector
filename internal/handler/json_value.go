@@ -15,46 +15,9 @@ import (
 // Принимает запрос с ID и типом метрики, возвращает её значение в JSON
 func NewJSONValueHandler(storage repository.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Проверяем HTTP метод
-		if r.Method != http.MethodPost {
-			logger.Log.Info("Invalid method for JSON value",
-				zap.String("method", r.Method),
-				zap.String("expected", http.MethodPost),
-			)
-			http.Error(w, "only POST method allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		// Проверяем Content-Type
-		contentType := r.Header.Get("Content-Type")
-		if contentType != "application/json" {
-			logger.Log.Info("Invalid content type",
-				zap.String("content_type", contentType),
-				zap.String("expected", "application/json"),
-			)
-			http.Error(w, "content type must be application/json", http.StatusBadRequest)
-			return
-		}
-
-		// Декодируем JSON из тела запроса
-		var request models.Metrics
-		decoder := json.NewDecoder(r.Body)
-		if err := decoder.Decode(&request); err != nil {
-			logger.Log.Info("Failed to decode JSON",
-				zap.Error(err),
-			)
-			http.Error(w, "invalid JSON format", http.StatusBadRequest)
-			return
-		}
-
-		// Валидируем обязательные поля
-		if request.ID == "" {
-			http.Error(w, "metric ID is required", http.StatusBadRequest)
-			return
-		}
-
-		if request.MType == "" {
-			http.Error(w, "metric type is required", http.StatusBadRequest)
+		// Общая валидация и декодирование
+		request, ok := validateJSONRequest(w, r)
+		if !ok {
 			return
 		}
 
