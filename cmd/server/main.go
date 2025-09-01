@@ -1,16 +1,14 @@
 package main
 
 import (
+	"context"
 	"log"
-	"net/http"
 
-	"github.com/go-chi/chi/v5"
-	"go.uber.org/zap"
+	"go.uber.org/fx"
 
-	"github.com/Mihklz/metrixcollector/internal/config"
-	"github.com/Mihklz/metrixcollector/internal/handler"
+	"github.com/Mihklz/metrixcollector/internal/app"
 	"github.com/Mihklz/metrixcollector/internal/logger"
-	"github.com/Mihklz/metrixcollector/internal/repository"
+	"github.com/Mihklz/metrixcollector/internal/server"
 )
 
 func main() {
@@ -21,37 +19,41 @@ func main() {
 	// Обязательно сбрасываем буферы логгера при завершении программы
 	defer logger.Log.Sync()
 
-	cfg := config.LoadServerConfig()
+	// Создаем FX приложение с Dependency Injection
+	fxApp := fx.New(
+		// Провайдеры зависимостей
+		fx.Provide(
+			app.ProvideConfig,
+			app.ProvideStorage,
+			app.ProvideFileStorageService,
+			app.ProvideServer,
+		),
 
-	storage := repository.NewMemStorage()
+		// Запуск сервера
+		fx.Invoke(func(server *server.Server) {
+			// FX автоматически управляет lifecycle через hooks
+		}),
 
-	// Инициализируем chi-роутер
-	r := chi.NewRouter()
-
-	// Добавляем middleware для логирования ко всем роутам
-	r.Use(func(next http.Handler) http.Handler {
-		return logger.WithLogging(next)
-	})
-
-	// POST /update/{type}/{name}/{value}
-	r.Post("/update/{type}/{name}/{value}", handler.NewUpdateHandler(storage))
-
-	// GET /value/{type}/{name}
-	r.Get("/value/{type}/{name}", handler.NewValueHandler(storage))
-
-	// GET /
-	r.Get("/", handler.NewRootHandler(storage))
-
-	// Логируем запуск сервера
-	logger.Log.Info("Starting metrics collector server",
-		zap.String("address", cfg.RunAddr),
+		// Lifecycle hooks для graceful startup/shutdown
+		fx.Invoke(func(lc fx.Lifecycle, srv *server.Server) {
+			lc.Append(fx.Hook{
+				OnStart: func(ctx context.Context) error {
+					// Запускаем сервер в горутине
+					go func() {
+						if err := srv.Run(); err != nil {
+							logger.Log.Error("Server run failed")
+						}
+					}()
+					return nil
+				},
+				OnStop: func(ctx context.Context) error {
+					// Graceful shutdown
+					return srv.Shutdown(ctx)
+				},
+			})
+		}),
 	)
 
-	// Запускаем сервер
-	if err := http.ListenAndServe(cfg.RunAddr, r); err != nil {
-		logger.Log.Fatal("Server failed to start",
-			zap.Error(err),
-			zap.String("address", cfg.RunAddr),
-		)
-	}
+	// Запускаем приложение и ждем сигналов завершения
+	fxApp.Run()
 }
