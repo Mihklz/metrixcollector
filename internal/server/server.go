@@ -24,16 +24,18 @@ type Server struct {
 	config      *config.ServerConfig
 	storage     repository.Storage
 	fileService *service.FileStorageService
+	db          repository.Database
 	httpServer  *http.Server
 	router      *chi.Mux
 }
 
 // NewServer создает новый экземпляр сервера
-func NewServer(cfg *config.ServerConfig, storage repository.Storage, fileService *service.FileStorageService) *Server {
+func NewServer(cfg *config.ServerConfig, storage repository.Storage, fileService *service.FileStorageService, db repository.Database) *Server {
 	server := &Server{
 		config:      cfg,
 		storage:     storage,
 		fileService: fileService,
+		db:          db,
 	}
 
 	server.setupRouter()
@@ -62,6 +64,9 @@ func (s *Server) setupRouter() {
 	r.Post("/update/", handler.NewJSONUpdateHandler(s.storage))
 	r.Post("/value", handler.NewJSONValueHandler(s.storage))
 	r.Post("/value/", handler.NewJSONValueHandler(s.storage))
+
+	// === Эндпоинт для проверки соединения с БД ===
+	r.Get("/ping", handler.NewPingHandler(s.db))
 
 	s.router = r
 }

@@ -24,6 +24,7 @@ func main() {
 		// Провайдеры зависимостей
 		fx.Provide(
 			app.ProvideConfig,
+			app.ProvideDatabase,
 			app.ProvideStorage,
 			app.ProvideFileStorageService,
 			app.ProvideServer,

@@ -65,8 +65,8 @@ func (f *AppFactory) CreateSyncStorage(baseStorage repository.Storage, fileServi
 }
 
 // CreateServer создает HTTP сервер со всеми зависимостями
-func (f *AppFactory) CreateServer(storage repository.Storage, fileService *service.FileStorageService) *server.Server {
-	return server.NewServer(f.config, storage, fileService)
+func (f *AppFactory) CreateServer(storage repository.Storage, fileService *service.FileStorageService, db repository.Database) *server.Server {
+	return server.NewServer(f.config, storage, fileService, db)
 }
 
 // SyncStorage оборачивает storage для синхронного сохранения

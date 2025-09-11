@@ -1,6 +1,7 @@
 package app
 
 import (
+	_ "github.com/lib/pq" // PostgreSQL драйвер
 	"go.uber.org/zap"
 
 	"github.com/Mihklz/metrixcollector/internal/config"
@@ -13,6 +14,24 @@ import (
 // ProvideConfig предоставляет конфигурацию сервера
 func ProvideConfig() *config.ServerConfig {
 	return config.LoadServerConfig()
+}
+
+// ProvideDatabase предоставляет подключение к базе данных
+func ProvideDatabase(cfg *config.ServerConfig) (repository.Database, error) {
+	if cfg.DatabaseDSN == "" {
+		logger.Log.Info("Database DSN not provided, running without database connection")
+		return nil, nil
+	}
+
+	logger.Log.Info("Connecting to database", zap.String("dsn", cfg.DatabaseDSN))
+	db, err := repository.NewPostgresDB(cfg.DatabaseDSN)
+	if err != nil {
+		logger.Log.Error("Failed to connect to database", zap.Error(err))
+		return nil, err
+	}
+
+	logger.Log.Info("Successfully connected to database")
+	return db, nil
 }
 
 // ProvideStorage предоставляет базовое хранилище метрик
@@ -48,7 +67,7 @@ func ProvideFileStorageService(cfg *config.ServerConfig, storage repository.Stor
 }
 
 // ProvideServer предоставляет HTTP сервер
-func ProvideServer(cfg *config.ServerConfig, baseStorage repository.Storage, fileService *service.FileStorageService) *server.Server {
+func ProvideServer(cfg *config.ServerConfig, baseStorage repository.Storage, fileService *service.FileStorageService, db repository.Database) *server.Server {
 	var storage = baseStorage
 
 	// Если интервал равен 0, используем синхронное сохранение
@@ -60,7 +79,7 @@ func ProvideServer(cfg *config.ServerConfig, baseStorage repository.Storage, fil
 		}
 	}
 
-	return server.NewServer(cfg, storage, fileService)
+	return server.NewServer(cfg, storage, fileService, db)
 }
 
 // SyncStorageWithDI - синхронное хранилище с Dependency Injection
