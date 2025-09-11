@@ -66,7 +66,15 @@ func (s *Server) setupRouter() {
 	r.Post("/value/", handler.NewJSONValueHandler(s.storage))
 
 	// === Эндпоинт для проверки соединения с БД ===
-	r.Get("/ping", handler.NewPingHandler(s.db))
+	// Если используется PostgreSQL хранилище, создаем новый Database объект для ping
+	var pingDB repository.Database = s.db
+	if postgresStorage, isPostgres := s.storage.(*repository.PostgresStorage); isPostgres {
+		// Для PostgreSQL хранилища создаем Database объект из соединения
+		if conn := postgresStorage.GetConnection(); conn != nil {
+			pingDB = &repository.PostgresDB{DB: conn}
+		}
+	}
+	r.Get("/ping", handler.NewPingHandler(pingDB))
 
 	s.router = r
 }

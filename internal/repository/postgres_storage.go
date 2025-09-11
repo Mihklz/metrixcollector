@@ -241,3 +241,8 @@ func (ps *PostgresStorage) LoadFromFile(filename string) error {
 func (ps *PostgresStorage) Close() error {
 	return ps.db.Close()
 }
+
+// GetConnection возвращает объект соединения с базой данных для ping handler
+func (ps *PostgresStorage) GetConnection() *sql.DB {
+	return ps.db
+}

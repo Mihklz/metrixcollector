@@ -17,7 +17,7 @@ type Database interface {
 
 // PostgresDB реализация интерфейса Database для PostgreSQL
 type PostgresDB struct {
-	db *sql.DB
+	DB *sql.DB // Экспортируемое поле для создания из существующего соединения
 }
 
 // NewPostgresDB создает новое подключение к PostgreSQL
@@ -33,20 +33,20 @@ func NewPostgresDB(dsn string) (*PostgresDB, error) {
 		return nil, err
 	}
 
-	return &PostgresDB{db: db}, nil
+	return &PostgresDB{DB: db}, nil
 }
 
 // Ping проверяет соединение с базой данных
 func (p *PostgresDB) Ping(ctx context.Context) error {
-	return p.db.PingContext(ctx)
+	return p.DB.PingContext(ctx)
 }
 
 // Close закрывает соединение с базой данных
 func (p *PostgresDB) Close() error {
-	return p.db.Close()
+	return p.DB.Close()
 }
 
 // GetConnection возвращает объект соединения с базой данных
 func (p *PostgresDB) GetConnection() *sql.DB {
-	return p.db
+	return p.DB
 }

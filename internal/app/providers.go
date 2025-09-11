@@ -110,6 +110,11 @@ func ProvideServer(cfg *config.ServerConfig, baseStorage repository.Storage, fil
 		}
 	}
 
+	// Важно: если используется PostgreSQL хранилище, но db == nil, это означает ошибку в логике
+	if _, isPostgres := baseStorage.(*repository.PostgresStorage); isPostgres && db == nil {
+		logger.Log.Warn("PostgreSQL storage is used but Database object is nil - this should not happen")
+	}
+
 	return server.NewServer(cfg, storage, fileService, db)
 }
 

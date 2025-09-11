@@ -30,6 +30,12 @@ func NewFileStorageService(storage repository.Storage, filePath string, interval
 
 // StartPeriodicSave запускает периодическое сохранение метрик
 func (fs *FileStorageService) StartPeriodicSave(ctx context.Context) {
+	// Если интервал равен 0 или меньше, не запускаем периодическое сохранение
+	if fs.interval <= 0 {
+		fs.logger.Info("Periodic save disabled (interval <= 0)")
+		return
+	}
+	
 	ticker := time.NewTicker(fs.interval)
 	defer ticker.Stop()
 
