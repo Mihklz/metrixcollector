@@ -62,8 +62,8 @@ func (c *DefaultErrorClassifier) Classify(err error) ErrorClassification {
 func isNetworkError(err error) bool {
 	var netErr net.Error
 	if errors.As(err, &netErr) {
-		// Временные сетевые ошибки можно повторить
-		return netErr.Temporary() || netErr.Timeout()
+		// Сетевые ошибки с таймаутом можно повторить
+		return netErr.Timeout()
 	}
 
 	// Проверяем по тексту ошибки
