@@ -65,6 +65,9 @@ func (s *Server) setupRouter() {
 	r.Post("/value", handler.NewJSONValueHandler(s.storage))
 	r.Post("/value/", handler.NewJSONValueHandler(s.storage))
 
+	// === Batch API эндпоинт ===
+	r.Post("/updates/", handler.NewBatchUpdateHandler(s.storage))
+
 	// === Эндпоинт для проверки соединения с БД ===
 	// Если используется PostgreSQL хранилище, создаем новый Database объект для ping
 	var pingDB repository.Database = s.db

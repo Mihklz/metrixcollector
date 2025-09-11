@@ -13,6 +13,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/Mihklz/metrixcollector/internal/logger"
+	models "github.com/Mihklz/metrixcollector/internal/model"
 )
 
 // PostgresStorage реализует интерфейс Storage для PostgreSQL
@@ -23,12 +24,12 @@ type PostgresStorage struct {
 // NewPostgresStorage создает новое PostgreSQL хранилище
 func NewPostgresStorage(db *sql.DB, migrationsPath string) (*PostgresStorage, error) {
 	storage := &PostgresStorage{db: db}
-	
+
 	// Применяем миграции
 	if err := storage.runMigrations(migrationsPath); err != nil {
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
-	
+
 	return storage, nil
 }
 
@@ -130,7 +131,7 @@ func (ps *PostgresStorage) GetGauge(name string) (Gauge, bool) {
 
 	var value float64
 	query := `SELECT value FROM metrics WHERE name = $1 AND type = 'gauge'`
-	
+
 	err := ps.db.QueryRowContext(ctx, query, name).Scan(&value)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -150,7 +151,7 @@ func (ps *PostgresStorage) GetCounter(name string) (Counter, bool) {
 
 	var delta int64
 	query := `SELECT delta FROM metrics WHERE name = $1 AND type = 'counter'`
-	
+
 	err := ps.db.QueryRowContext(ctx, query, name).Scan(&delta)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -170,7 +171,7 @@ func (ps *PostgresStorage) GetAllGauges() map[string]Gauge {
 
 	gauges := make(map[string]Gauge)
 	query := `SELECT name, value FROM metrics WHERE type = 'gauge'`
-	
+
 	rows, err := ps.db.QueryContext(ctx, query)
 	if err != nil {
 		logger.Log.Error("Failed to get all gauge metrics", zap.Error(err))
@@ -202,7 +203,7 @@ func (ps *PostgresStorage) GetAllCounters() map[string]Counter {
 
 	counters := make(map[string]Counter)
 	query := `SELECT name, delta FROM metrics WHERE type = 'counter'`
-	
+
 	rows, err := ps.db.QueryContext(ctx, query)
 	if err != nil {
 		logger.Log.Error("Failed to get all counter metrics", zap.Error(err))
@@ -245,4 +246,85 @@ func (ps *PostgresStorage) Close() error {
 // GetConnection возвращает объект соединения с базой данных для ping handler
 func (ps *PostgresStorage) GetConnection() *sql.DB {
 	return ps.db
+}
+
+// UpdateBatch обновляет множество метрик в рамках одной транзакции
+func (ps *PostgresStorage) UpdateBatch(metrics []models.Metrics) error {
+	if len(metrics) == 0 {
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Начинаем транзакцию
+	tx, err := ps.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	// В случае ошибки откатываем транзакцию
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Подготавливаем запросы для batch операций
+	gaugeStmt, err := tx.PrepareContext(ctx, `
+		INSERT INTO metrics (name, type, value, updated_at) 
+		VALUES ($1, 'gauge', $2, CURRENT_TIMESTAMP)
+		ON CONFLICT (name, type) 
+		DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP`)
+	if err != nil {
+		return fmt.Errorf("failed to prepare gauge statement: %w", err)
+	}
+	defer gaugeStmt.Close()
+
+	counterStmt, err := tx.PrepareContext(ctx, `
+		INSERT INTO metrics (name, type, delta, updated_at) 
+		VALUES ($1, 'counter', $2, CURRENT_TIMESTAMP)
+		ON CONFLICT (name, type) 
+		DO UPDATE SET delta = metrics.delta + EXCLUDED.delta, updated_at = CURRENT_TIMESTAMP`)
+	if err != nil {
+		return fmt.Errorf("failed to prepare counter statement: %w", err)
+	}
+	defer counterStmt.Close()
+
+	// Обрабатываем каждую метрику в рамках транзакции
+	for _, metric := range metrics {
+		switch metric.MType {
+		case "gauge":
+			if metric.Value == nil {
+				return fmt.Errorf("gauge metric %s missing value", metric.ID)
+			}
+			_, err = gaugeStmt.ExecContext(ctx, metric.ID, *metric.Value)
+			if err != nil {
+				return fmt.Errorf("failed to update gauge metric %s: %w", metric.ID, err)
+			}
+
+		case "counter":
+			if metric.Delta == nil {
+				return fmt.Errorf("counter metric %s missing delta", metric.ID)
+			}
+			_, err = counterStmt.ExecContext(ctx, metric.ID, *metric.Delta)
+			if err != nil {
+				return fmt.Errorf("failed to update counter metric %s: %w", metric.ID, err)
+			}
+
+		default:
+			return fmt.Errorf("unsupported metric type: %s", metric.MType)
+		}
+	}
+
+	// Коммитим транзакцию
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	logger.Log.Info("Batch metrics updated in PostgreSQL",
+		zap.Int("count", len(metrics)),
+	)
+
+	return nil
 }
