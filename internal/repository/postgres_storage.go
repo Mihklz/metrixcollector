@@ -14,16 +14,21 @@ import (
 
 	"github.com/Mihklz/metrixcollector/internal/logger"
 	models "github.com/Mihklz/metrixcollector/internal/model"
+	"github.com/Mihklz/metrixcollector/internal/retry"
 )
 
 // PostgresStorage реализует интерфейс Storage для PostgreSQL
 type PostgresStorage struct {
-	db *sql.DB
+	db          *sql.DB
+	retryConfig *retry.RetryConfig
 }
 
 // NewPostgresStorage создает новое PostgreSQL хранилище
 func NewPostgresStorage(db *sql.DB, migrationsPath string) (*PostgresStorage, error) {
-	storage := &PostgresStorage{db: db}
+	storage := &PostgresStorage{
+		db:          db,
+		retryConfig: retry.DefaultRetryConfig(),
+	}
 
 	// Применяем миграции
 	if err := storage.runMigrations(migrationsPath); err != nil {
@@ -64,14 +69,16 @@ func (ps *PostgresStorage) Update(metricType, name, value string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	switch metricType {
-	case "gauge":
-		return ps.updateGauge(ctx, name, value)
-	case "counter":
-		return ps.updateCounter(ctx, name, value)
-	default:
-		return fmt.Errorf("unsupported metric type: %s", metricType)
-	}
+	return retry.Execute(ctx, ps.retryConfig, func() error {
+		switch metricType {
+		case "gauge":
+			return ps.updateGauge(ctx, name, value)
+		case "counter":
+			return ps.updateCounter(ctx, name, value)
+		default:
+			return fmt.Errorf("unsupported metric type: %s", metricType)
+		}
+	})
 }
 
 // updateGauge обновляет gauge метрику
@@ -257,74 +264,76 @@ func (ps *PostgresStorage) UpdateBatch(metrics []models.Metrics) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Начинаем транзакцию
-	tx, err := ps.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-
-	// В случае ошибки откатываем транзакцию
-	defer func() {
+	return retry.Execute(ctx, ps.retryConfig, func() error {
+		// Начинаем транзакцию
+		tx, err := ps.db.BeginTx(ctx, nil)
 		if err != nil {
-			tx.Rollback()
+			return fmt.Errorf("failed to begin transaction: %w", err)
 		}
-	}()
 
-	// Подготавливаем запросы для batch операций
-	gaugeStmt, err := tx.PrepareContext(ctx, `
-		INSERT INTO metrics (name, type, value, updated_at) 
-		VALUES ($1, 'gauge', $2, CURRENT_TIMESTAMP)
-		ON CONFLICT (name, type) 
-		DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP`)
-	if err != nil {
-		return fmt.Errorf("failed to prepare gauge statement: %w", err)
-	}
-	defer gaugeStmt.Close()
-
-	counterStmt, err := tx.PrepareContext(ctx, `
-		INSERT INTO metrics (name, type, delta, updated_at) 
-		VALUES ($1, 'counter', $2, CURRENT_TIMESTAMP)
-		ON CONFLICT (name, type) 
-		DO UPDATE SET delta = metrics.delta + EXCLUDED.delta, updated_at = CURRENT_TIMESTAMP`)
-	if err != nil {
-		return fmt.Errorf("failed to prepare counter statement: %w", err)
-	}
-	defer counterStmt.Close()
-
-	// Обрабатываем каждую метрику в рамках транзакции
-	for _, metric := range metrics {
-		switch metric.MType {
-		case "gauge":
-			if metric.Value == nil {
-				return fmt.Errorf("gauge metric %s missing value", metric.ID)
-			}
-			_, err = gaugeStmt.ExecContext(ctx, metric.ID, *metric.Value)
+		// В случае ошибки откатываем транзакцию
+		defer func() {
 			if err != nil {
-				return fmt.Errorf("failed to update gauge metric %s: %w", metric.ID, err)
+				tx.Rollback()
 			}
+		}()
 
-		case "counter":
-			if metric.Delta == nil {
-				return fmt.Errorf("counter metric %s missing delta", metric.ID)
-			}
-			_, err = counterStmt.ExecContext(ctx, metric.ID, *metric.Delta)
-			if err != nil {
-				return fmt.Errorf("failed to update counter metric %s: %w", metric.ID, err)
-			}
-
-		default:
-			return fmt.Errorf("unsupported metric type: %s", metric.MType)
+		// Подготавливаем запросы для batch операций
+		gaugeStmt, err := tx.PrepareContext(ctx, `
+			INSERT INTO metrics (name, type, value, updated_at) 
+			VALUES ($1, 'gauge', $2, CURRENT_TIMESTAMP)
+			ON CONFLICT (name, type) 
+			DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP`)
+		if err != nil {
+			return fmt.Errorf("failed to prepare gauge statement: %w", err)
 		}
-	}
+		defer gaugeStmt.Close()
 
-	// Коммитим транзакцию
-	if err = tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
+		counterStmt, err := tx.PrepareContext(ctx, `
+			INSERT INTO metrics (name, type, delta, updated_at) 
+			VALUES ($1, 'counter', $2, CURRENT_TIMESTAMP)
+			ON CONFLICT (name, type) 
+			DO UPDATE SET delta = metrics.delta + EXCLUDED.delta, updated_at = CURRENT_TIMESTAMP`)
+		if err != nil {
+			return fmt.Errorf("failed to prepare counter statement: %w", err)
+		}
+		defer counterStmt.Close()
 
-	logger.Log.Info("Batch metrics updated in PostgreSQL",
-		zap.Int("count", len(metrics)),
-	)
+		// Обрабатываем каждую метрику в рамках транзакции
+		for _, metric := range metrics {
+			switch metric.MType {
+			case "gauge":
+				if metric.Value == nil {
+					return fmt.Errorf("gauge metric %s missing value", metric.ID)
+				}
+				_, err = gaugeStmt.ExecContext(ctx, metric.ID, *metric.Value)
+				if err != nil {
+					return fmt.Errorf("failed to update gauge metric %s: %w", metric.ID, err)
+				}
 
-	return nil
+			case "counter":
+				if metric.Delta == nil {
+					return fmt.Errorf("counter metric %s missing delta", metric.ID)
+				}
+				_, err = counterStmt.ExecContext(ctx, metric.ID, *metric.Delta)
+				if err != nil {
+					return fmt.Errorf("failed to update counter metric %s: %w", metric.ID, err)
+				}
+
+			default:
+				return fmt.Errorf("unsupported metric type: %s", metric.MType)
+			}
+		}
+
+		// Коммитим транзакцию
+		if err = tx.Commit(); err != nil {
+			return fmt.Errorf("failed to commit transaction: %w", err)
+		}
+
+		logger.Log.Info("Batch metrics updated in PostgreSQL",
+			zap.Int("count", len(metrics)),
+		)
+
+		return nil
+	})
 }

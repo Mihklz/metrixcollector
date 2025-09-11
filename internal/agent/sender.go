@@ -13,11 +13,13 @@ import (
 
 	"github.com/Mihklz/metrixcollector/internal/logger"
 	models "github.com/Mihklz/metrixcollector/internal/model"
+	"github.com/Mihklz/metrixcollector/internal/retry"
 )
 
 type MetricsSender struct {
 	client     *http.Client
 	serverAddr string
+	retryConfig *retry.RetryConfig
 }
 
 func NewMetricsSender(serverAddr string) *MetricsSender {
@@ -25,7 +27,8 @@ func NewMetricsSender(serverAddr string) *MetricsSender {
 		client: &http.Client{
 			Timeout: 10 * time.Second,
 		},
-		serverAddr: serverAddr,
+		serverAddr:  serverAddr,
+		retryConfig: retry.DefaultRetryConfig(),
 	}
 }
 
@@ -48,9 +51,13 @@ func compressData(data []byte) ([]byte, error) {
 }
 
 func (s *MetricsSender) SendMetrics(ctx context.Context, metrics MetricsSet) error {
-	// Пытаемся отправить всё одним batch запросом
-	if err := s.SendMetricsBatch(ctx, metrics); err != nil {
-		logger.Log.Warn("Batch send failed, falling back to individual requests", zap.Error(err))
+	// Пытаемся отправить всё одним batch запросом с retry-логикой
+	err := retry.Execute(ctx, s.retryConfig, func() error {
+		return s.SendMetricsBatch(ctx, metrics)
+	})
+	
+	if err != nil {
+		logger.Log.Warn("Batch send failed after retries, falling back to individual requests", zap.Error(err))
 
 		// Fallback на отдельные запросы для обратной совместимости
 		return s.sendMetricsIndividually(ctx, metrics)
@@ -132,7 +139,7 @@ func (s *MetricsSender) SendMetricsBatch(ctx context.Context, metrics MetricsSet
 
 // sendMetricsIndividually отправляет метрики по одной (fallback)
 func (s *MetricsSender) sendMetricsIndividually(ctx context.Context, metrics MetricsSet) error {
-	// Отправляем gauge метрики
+	// Отправляем gauge метрики с retry-логикой
 	for name, value := range metrics.Gauges {
 		select {
 		case <-ctx.Done():
@@ -140,8 +147,12 @@ func (s *MetricsSender) sendMetricsIndividually(ctx context.Context, metrics Met
 		default:
 		}
 
-		if err := s.sendGauge(name, value); err != nil {
-			logger.Log.Error("Failed to send gauge metric",
+		err := retry.Execute(ctx, s.retryConfig, func() error {
+			return s.sendGauge(name, value)
+		})
+		
+		if err != nil {
+			logger.Log.Error("Failed to send gauge metric after retries",
 				zap.String("name", name),
 				zap.Float64("value", value),
 				zap.Error(err),
@@ -150,15 +161,19 @@ func (s *MetricsSender) sendMetricsIndividually(ctx context.Context, metrics Met
 		}
 	}
 
-	// Отправляем counter метрику
+	// Отправляем counter метрику с retry-логикой
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
 	default:
 	}
 
-	if err := s.sendCounter("PollCount", metrics.PollCount); err != nil {
-		logger.Log.Error("Failed to send counter metric",
+	err := retry.Execute(ctx, s.retryConfig, func() error {
+		return s.sendCounter("PollCount", metrics.PollCount)
+	})
+	
+	if err != nil {
+		logger.Log.Error("Failed to send counter metric after retries",
 			zap.String("name", "PollCount"),
 			zap.Int64("value", metrics.PollCount),
 			zap.Error(err),
