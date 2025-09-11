@@ -62,12 +62,14 @@ func NewJSONValueHandler(storage repository.Storage) http.HandlerFunc {
 
 		// Отправляем ответ в JSON
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
 
 		encoder := json.NewEncoder(w)
 		if err := encoder.Encode(response); err != nil {
 			logger.Log.Error("Failed to encode response JSON", zap.Error(err))
 			http.Error(w, "failed to encode response", http.StatusInternalServerError)
+			return
 		}
+
+		// Если дошли сюда, то всё успешно - статус код 200 будет установлен автоматически
 	}
 }
