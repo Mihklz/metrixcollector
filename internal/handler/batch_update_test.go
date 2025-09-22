@@ -15,6 +15,7 @@ import (
 	"github.com/Mihklz/metrixcollector/internal/logger"
 	models "github.com/Mihklz/metrixcollector/internal/model"
 	"github.com/Mihklz/metrixcollector/internal/repository"
+	"github.com/Mihklz/metrixcollector/internal/service"
 )
 
 func init() {
@@ -24,7 +25,8 @@ func init() {
 
 func TestBatchUpdateHandler(t *testing.T) {
 	storage := repository.NewMemStorage()
-	handler := NewBatchUpdateHandler(storage)
+	metricsService := service.NewMetricsService(storage)
+	handler := NewBatchUpdateHandler(metricsService)
 
 	tests := []struct {
 		name           string
@@ -129,7 +131,8 @@ func TestBatchUpdateHandler(t *testing.T) {
 
 func TestBatchUpdateHandlerMethods(t *testing.T) {
 	storage := repository.NewMemStorage()
-	handler := NewBatchUpdateHandler(storage)
+	metricsService := service.NewMetricsService(storage)
+	handler := NewBatchUpdateHandler(metricsService)
 
 	tests := []struct {
 		name           string
@@ -168,7 +171,8 @@ func TestBatchUpdateHandlerMethods(t *testing.T) {
 
 func TestBatchUpdateHandlerContentType(t *testing.T) {
 	storage := repository.NewMemStorage()
-	handler := NewBatchUpdateHandler(storage)
+	metricsService := service.NewMetricsService(storage)
+	handler := NewBatchUpdateHandler(metricsService)
 
 	tests := []struct {
 		name           string

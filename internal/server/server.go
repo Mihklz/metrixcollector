@@ -21,21 +21,25 @@ import (
 
 // Server представляет HTTP сервер для сбора метрик
 type Server struct {
-	config      *config.ServerConfig
-	storage     repository.Storage
-	fileService *service.FileStorageService
-	db          repository.Database
-	httpServer  *http.Server
-	router      *chi.Mux
+	config         *config.ServerConfig
+	storage        repository.Storage
+	fileService    *service.FileStorageService
+	metricsService *service.MetricsService
+	db             repository.Database
+	httpServer     *http.Server
+	router         *chi.Mux
 }
 
 // NewServer создает новый экземпляр сервера
 func NewServer(cfg *config.ServerConfig, storage repository.Storage, fileService *service.FileStorageService, db repository.Database) *Server {
+	metricsService := service.NewMetricsService(storage)
+
 	server := &Server{
-		config:      cfg,
-		storage:     storage,
-		fileService: fileService,
-		db:          db,
+		config:         cfg,
+		storage:        storage,
+		fileService:    fileService,
+		metricsService: metricsService,
+		db:             db,
 	}
 
 	server.setupRouter()
@@ -66,7 +70,7 @@ func (s *Server) setupRouter() {
 	r.Post("/value/", handler.NewJSONValueHandler(s.storage))
 
 	// === Batch API эндпоинт ===
-	r.Post("/updates/", handler.NewBatchUpdateHandler(s.storage))
+	r.Post("/updates/", handler.NewBatchUpdateHandler(s.metricsService))
 
 	// === Эндпоинт для проверки соединения с БД ===
 	// Если используется PostgreSQL хранилище, создаем новый Database объект для ping
