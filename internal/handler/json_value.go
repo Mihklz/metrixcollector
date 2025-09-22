@@ -13,7 +13,7 @@ import (
 
 // NewJSONValueHandler создаёт обработчик для POST /value (JSON API)
 // Принимает запрос с ID и типом метрики, возвращает её значение в JSON
-func NewJSONValueHandler(storage repository.Storage) http.HandlerFunc {
+func NewJSONValueHandler(storage repository.Storage, key string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Общая валидация и декодирование
 		request, ok := validateJSONRequest(w, r)
@@ -60,16 +60,14 @@ func NewJSONValueHandler(storage repository.Storage) http.HandlerFunc {
 			zap.String("type", request.MType),
 		)
 
-		// Отправляем ответ в JSON
-		w.Header().Set("Content-Type", "application/json")
-
-		encoder := json.NewEncoder(w)
-		if err := encoder.Encode(response); err != nil {
+		// Отправляем ответ в JSON с хешем
+		responseData, err := json.Marshal(response)
+		if err != nil {
 			logger.Log.Error("Failed to encode response JSON", zap.Error(err))
 			http.Error(w, "failed to encode response", http.StatusInternalServerError)
 			return
 		}
 
-		// Если дошли сюда, то всё успешно - статус код 200 будет установлен автоматически
+		WriteResponseWithHash(w, responseData, key, http.StatusOK, "application/json")
 	}
 }

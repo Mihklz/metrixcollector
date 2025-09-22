@@ -12,6 +12,7 @@ type AgentConfig struct {
 	ServerAddr     string
 	PollInterval   time.Duration
 	ReportInterval time.Duration
+	Key            string // ключ для подписи данных
 }
 
 func LoadAgentConfig() *AgentConfig {
@@ -19,12 +20,14 @@ func LoadAgentConfig() *AgentConfig {
 		serverAddr string
 		pollSec    int
 		reportSec  int
+		key        string
 	)
 
 	// 1. Устанавливаем значения по умолчанию через флаги
 	flag.StringVar(&serverAddr, "a", "localhost:8080", "address of HTTP server")
 	flag.IntVar(&pollSec, "p", 2, "poll interval in seconds")
 	flag.IntVar(&reportSec, "r", 10, "report interval in seconds")
+	flag.StringVar(&key, "k", "", "key for signing data")
 	flag.Parse()
 
 	// 2. Проверяем переменные окружения (приоритет выше флагов)
@@ -52,9 +55,15 @@ func LoadAgentConfig() *AgentConfig {
 		}
 	}
 
+	// KEY - ключ для подписи данных
+	if envKey := os.Getenv("KEY"); envKey != "" {
+		key = envKey
+	}
+
 	return &AgentConfig{
 		ServerAddr:     "http://" + serverAddr,
 		PollInterval:   time.Duration(pollSec) * time.Second,
 		ReportInterval: time.Duration(reportSec) * time.Second,
+		Key:            key,
 	}
 }

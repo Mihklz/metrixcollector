@@ -12,6 +12,7 @@ type ServerConfig struct {
 	FileStoragePath string // путь к файлу для сохранения метрик
 	Restore         bool   // загружать ли метрики при старте
 	DatabaseDSN     string // строка подключения к базе данных
+	Key             string // ключ для подписи данных
 }
 
 func LoadServerConfig() *ServerConfig {
@@ -20,6 +21,7 @@ func LoadServerConfig() *ServerConfig {
 	var fileStoragePath string
 	var restore bool
 	var databaseDSN string
+	var key string
 
 	// 1. Устанавливаем значения по умолчанию
 	flag.StringVar(&runAddr, "a", "localhost:8080", "address and port to run HTTP server")
@@ -27,6 +29,7 @@ func LoadServerConfig() *ServerConfig {
 	flag.StringVar(&fileStoragePath, "f", "/tmp/metrics-db.json", "file storage path")
 	flag.BoolVar(&restore, "r", true, "restore previously saved values")
 	flag.StringVar(&databaseDSN, "d", "", "database connection string")
+	flag.StringVar(&key, "k", "", "key for signing data")
 	flag.Parse()
 
 	// 2. Проверяем переменные окружения (приоритет выше флагов)
@@ -54,11 +57,16 @@ func LoadServerConfig() *ServerConfig {
 		databaseDSN = envDatabaseDSN
 	}
 
+	if envKey := os.Getenv("KEY"); envKey != "" {
+		key = envKey
+	}
+
 	return &ServerConfig{
 		RunAddr:         runAddr,
 		StoreInterval:   storeInterval,
 		FileStoragePath: fileStoragePath,
 		Restore:         restore,
 		DatabaseDSN:     databaseDSN,
+		Key:             key,
 	}
 }

@@ -109,13 +109,13 @@ func isPostgresRetriableError(err error) bool {
 
 	// Конкретные retriable коды ошибок
 	switch pgErr.Code {
-	case pgerrcode.ConnectionException,           // 08000
-		pgerrcode.ConnectionDoesNotExist,         // 08003
-		pgerrcode.ConnectionFailure,              // 08006
-		pgerrcode.TransactionRollback,            // 40000
-		pgerrcode.SerializationFailure,           // 40001
-		pgerrcode.DeadlockDetected,               // 40P01
-		pgerrcode.CannotConnectNow:               // 57P03
+	case pgerrcode.ConnectionException, // 08000
+		pgerrcode.ConnectionDoesNotExist, // 08003
+		pgerrcode.ConnectionFailure,      // 08006
+		pgerrcode.TransactionRollback,    // 40000
+		pgerrcode.SerializationFailure,   // 40001
+		pgerrcode.DeadlockDetected,       // 40P01
+		pgerrcode.CannotConnectNow:       // 57P03
 		return true
 	}
 
@@ -125,7 +125,7 @@ func isPostgresRetriableError(err error) bool {
 // isTemporaryHTTPError проверяет, является ли ошибка HTTP временной (retriable)
 func isTemporaryHTTPError(err error) bool {
 	errStr := strings.ToLower(err.Error())
-	
+
 	// HTTP статус коды, которые можно повторить
 	temporaryStatusCodes := []string{
 		"502 bad gateway",

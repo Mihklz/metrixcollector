@@ -35,7 +35,7 @@ func main() {
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 	// Создаем sender для отправки метрик
-	sender := agent.NewMetricsSender(cfg.ServerAddr)
+	sender := agent.NewMetricsSender(cfg.ServerAddr, cfg.Key)
 
 	// Запускаем основной цикл в горутине
 	var wg sync.WaitGroup

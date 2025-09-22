@@ -191,14 +191,14 @@ func (m *MemStorage) UpdateBatch(metrics []models.Metrics) error {
 				return fmt.Errorf("gauge metric %s missing value", metric.ID)
 			}
 			m.Gauges[metric.ID] = Gauge(*metric.Value)
-			
+
 		case models.Counter:
 			if metric.Delta == nil {
 				return fmt.Errorf("counter metric %s missing delta", metric.ID)
 			}
 			// Для counter добавляем к существующему значению
 			m.Counters[metric.ID] += Counter(*metric.Delta)
-			
+
 		default:
 			return fmt.Errorf("unsupported metric type: %s", metric.MType)
 		}

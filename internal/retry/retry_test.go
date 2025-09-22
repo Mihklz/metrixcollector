@@ -24,7 +24,7 @@ func TestExecute_Success(t *testing.T) {
 	}
 
 	err := Execute(context.Background(), config, operation)
-	
+
 	assert.NoError(t, err)
 	assert.Equal(t, 1, callCount) // Должна быть только одна попытка
 }
@@ -46,7 +46,7 @@ func TestExecute_RetriableError_SuccessAfterRetry(t *testing.T) {
 	}
 
 	err := Execute(context.Background(), config, operation)
-	
+
 	assert.NoError(t, err)
 	assert.Equal(t, 3, callCount)
 }
@@ -65,7 +65,7 @@ func TestExecute_NonRetriableError_NoRetry(t *testing.T) {
 	}
 
 	err := Execute(context.Background(), config, operation)
-	
+
 	assert.Error(t, err)
 	assert.Equal(t, 1, callCount) // Должна быть только одна попытка
 }
@@ -84,7 +84,7 @@ func TestExecute_MaxAttemptsExceeded(t *testing.T) {
 	}
 
 	err := Execute(context.Background(), config, operation)
-	
+
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "operation failed after 3 attempts")
 	assert.Equal(t, 3, callCount)
@@ -98,7 +98,7 @@ func TestExecute_ContextCancelled(t *testing.T) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	callCount := 0
 	operation := func() error {
 		callCount++
@@ -109,7 +109,7 @@ func TestExecute_ContextCancelled(t *testing.T) {
 	}
 
 	err := Execute(ctx, config, operation)
-	
+
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "operation cancelled")
 	assert.Equal(t, 2, callCount)
@@ -130,14 +130,14 @@ func TestExecuteWithTimeout(t *testing.T) {
 
 	// Очень короткий таймаут
 	err := ExecuteWithTimeout(context.Background(), config, 5*time.Millisecond, operation)
-	
+
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "operation cancelled")
 }
 
 func TestDefaultRetryConfig(t *testing.T) {
 	config := DefaultRetryConfig()
-	
+
 	assert.Equal(t, 4, config.MaxAttempts)
 	assert.Len(t, config.Delays, 3)
 	assert.Equal(t, 1*time.Second, config.Delays[0])

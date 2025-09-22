@@ -57,6 +57,7 @@ func (s *Server) setupRouter() {
 		return logger.WithLogging(next)
 	})
 	r.Use(middleware.WithGzip)
+	r.Use(middleware.WithHashValidation(s.config.Key))
 
 	// === Старые URL-based эндпоинты (для совместимости) ===
 	r.Post("/update/{type}/{name}/{value}", handler.NewUpdateHandler(s.storage))
@@ -64,13 +65,13 @@ func (s *Server) setupRouter() {
 	r.Get("/", handler.NewRootHandler(s.storage))
 
 	// === Новые JSON API эндпоинты ===
-	r.Post("/update", handler.NewJSONUpdateHandler(s.storage))
-	r.Post("/update/", handler.NewJSONUpdateHandler(s.storage))
-	r.Post("/value", handler.NewJSONValueHandler(s.storage))
-	r.Post("/value/", handler.NewJSONValueHandler(s.storage))
+	r.Post("/update", handler.NewJSONUpdateHandler(s.storage, s.config.Key))
+	r.Post("/update/", handler.NewJSONUpdateHandler(s.storage, s.config.Key))
+	r.Post("/value", handler.NewJSONValueHandler(s.storage, s.config.Key))
+	r.Post("/value/", handler.NewJSONValueHandler(s.storage, s.config.Key))
 
 	// === Batch API эндпоинт ===
-	r.Post("/updates/", handler.NewBatchUpdateHandler(s.metricsService))
+	r.Post("/updates/", handler.NewBatchUpdateHandler(s.metricsService, s.config.Key))
 
 	// === Эндпоинт для проверки соединения с БД ===
 	// Если используется PostgreSQL хранилище, создаем новый Database объект для ping
