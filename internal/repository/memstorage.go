@@ -172,3 +172,37 @@ func (m *MemStorage) LoadFromFile(filename string) error {
 
 	return nil
 }
+
+// UpdateBatch обновляет множество метрик в рамках одной операции с блокировкой
+func (m *MemStorage) UpdateBatch(metrics []models.Metrics) error {
+	if len(metrics) == 0 {
+		return nil
+	}
+
+	// Блокируем мьютекс на время всей batch операции
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Обрабатываем каждую метрику
+	for _, metric := range metrics {
+		switch metric.MType {
+		case models.Gauge:
+			if metric.Value == nil {
+				return fmt.Errorf("gauge metric %s missing value", metric.ID)
+			}
+			m.Gauges[metric.ID] = Gauge(*metric.Value)
+			
+		case models.Counter:
+			if metric.Delta == nil {
+				return fmt.Errorf("counter metric %s missing delta", metric.ID)
+			}
+			// Для counter добавляем к существующему значению
+			m.Counters[metric.ID] += Counter(*metric.Delta)
+			
+		default:
+			return fmt.Errorf("unsupported metric type: %s", metric.MType)
+		}
+	}
+
+	return nil
+}

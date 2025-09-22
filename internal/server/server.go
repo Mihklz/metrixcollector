@@ -21,19 +21,25 @@ import (
 
 // Server представляет HTTP сервер для сбора метрик
 type Server struct {
-	config      *config.ServerConfig
-	storage     repository.Storage
-	fileService *service.FileStorageService
-	httpServer  *http.Server
-	router      *chi.Mux
+	config         *config.ServerConfig
+	storage        repository.Storage
+	fileService    *service.FileStorageService
+	metricsService *service.MetricsService
+	db             repository.Database
+	httpServer     *http.Server
+	router         *chi.Mux
 }
 
 // NewServer создает новый экземпляр сервера
-func NewServer(cfg *config.ServerConfig, storage repository.Storage, fileService *service.FileStorageService) *Server {
+func NewServer(cfg *config.ServerConfig, storage repository.Storage, fileService *service.FileStorageService, db repository.Database) *Server {
+	metricsService := service.NewMetricsService(storage)
+
 	server := &Server{
-		config:      cfg,
-		storage:     storage,
-		fileService: fileService,
+		config:         cfg,
+		storage:        storage,
+		fileService:    fileService,
+		metricsService: metricsService,
+		db:             db,
 	}
 
 	server.setupRouter()
@@ -62,6 +68,20 @@ func (s *Server) setupRouter() {
 	r.Post("/update/", handler.NewJSONUpdateHandler(s.storage))
 	r.Post("/value", handler.NewJSONValueHandler(s.storage))
 	r.Post("/value/", handler.NewJSONValueHandler(s.storage))
+
+	// === Batch API эндпоинт ===
+	r.Post("/updates/", handler.NewBatchUpdateHandler(s.metricsService))
+
+	// === Эндпоинт для проверки соединения с БД ===
+	// Если используется PostgreSQL хранилище, создаем новый Database объект для ping
+	var pingDB repository.Database = s.db
+	if postgresStorage, isPostgres := s.storage.(*repository.PostgresStorage); isPostgres {
+		// Для PostgreSQL хранилища создаем Database объект из соединения
+		if conn := postgresStorage.GetConnection(); conn != nil {
+			pingDB = &repository.PostgresDB{DB: conn}
+		}
+	}
+	r.Get("/ping", handler.NewPingHandler(pingDB))
 
 	s.router = r
 }
