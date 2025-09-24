@@ -22,19 +22,15 @@ func readSystem() (total float64, free float64, cpuutil []float64) {
 	// CPU utilization per CPU за небольшой интервал
 	// Percent с interval>0 блокирует на интервал, используем неблокирующий способ WithContext + 0
 	// затем fallback на 100ms для получения усреднения
-	if vals, err := cpu.PercentWithContext(context.Background(), 0, true); err == nil {
-		cpuutil = make([]float64, len(vals))
-		for i, v := range vals {
-			cpuutil[i] = v
-		}
-		return
-	}
+    if vals, err := cpu.PercentWithContext(context.Background(), 0, true); err == nil {
+        cpuutil = make([]float64, len(vals))
+        copy(cpuutil, vals)
+        return
+    }
 
-	if vals, err := cpu.PercentWithContext(context.Background(), 100*time.Millisecond, true); err == nil {
-		cpuutil = make([]float64, len(vals))
-		for i, v := range vals {
-			cpuutil[i] = v
-		}
-	}
+    if vals, err := cpu.PercentWithContext(context.Background(), 100*time.Millisecond, true); err == nil {
+        cpuutil = make([]float64, len(vals))
+        copy(cpuutil, vals)
+    }
 	return
 }
