@@ -51,3 +51,40 @@ func Collect() MetricsSet {
 		},
 	}
 }
+
+// CollectSystem собирает дополнительные системные метрики при помощи gopsutil.
+// Возвращает карту gauge-метрик: TotalMemory, FreeMemory, CPUutilizationX
+func CollectSystem() map[string]float64 {
+	gauges := map[string]float64{}
+
+	// Эти вызовы будут заполнены реализацией в файле collector_sys.go
+	// для изоляции зависимости gopsutil на уровне сборки.
+	total, free, cpu := readSystem()
+	if total >= 0 {
+		gauges["TotalMemory"] = total
+	}
+	if free >= 0 {
+		gauges["FreeMemory"] = free
+	}
+	for i, v := range cpu {
+		gauges["CPUutilization"+itoa(i+1)] = v
+	}
+	return gauges
+}
+
+// itoa — маленький helper без импорта strconv для минимального шума
+func itoa(i int) string {
+	if i == 0 {
+		return "0"
+	}
+	digits := [20]byte{}
+	pos := len(digits)
+	for i > 0 {
+		pos--
+		digits[pos] = byte('0' + i%10)
+		i /= 10
+	}
+	return string(digits[pos:])
+}
+
+// readSystem реализуется в collector_sys.go
