@@ -14,7 +14,7 @@ func TestUpdateHandler_ValidGauge(t *testing.T) {
 	_ = logger.Initialize()
 
 	store := repository.NewMemStorage()
-	handler := NewUpdateHandler(store)
+	handler := NewUpdateHandler(store, nil)
 
 	req := httptest.NewRequest(http.MethodPost, "/update/gauge/TestGauge/123.4", nil)
 	w := httptest.NewRecorder()
@@ -37,7 +37,7 @@ func TestUpdateHandler_UnsupportedMethod(t *testing.T) {
 	_ = logger.Initialize()
 
 	store := repository.NewMemStorage()
-	handler := NewUpdateHandler(store)
+	handler := NewUpdateHandler(store, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/update/gauge/TestGauge/123.4", nil)
 	w := httptest.NewRecorder()
@@ -57,7 +57,7 @@ func TestUpdateHandler_InvalidPath(t *testing.T) {
 	_ = logger.Initialize()
 
 	store := repository.NewMemStorage()
-	handler := NewUpdateHandler(store)
+	handler := NewUpdateHandler(store, nil)
 
 	req := httptest.NewRequest(http.MethodPost, "/update/gaugeonly", nil)
 	w := httptest.NewRecorder()

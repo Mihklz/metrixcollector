@@ -6,11 +6,12 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/Mihklz/metrixcollector/internal/audit"
 	"github.com/Mihklz/metrixcollector/internal/logger"
 	"github.com/Mihklz/metrixcollector/internal/repository"
 )
 
-func NewUpdateHandler(storage repository.Storage) http.HandlerFunc {
+func NewUpdateHandler(storage repository.Storage, auditPublisher *audit.AuditPublisher) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -25,17 +26,24 @@ func NewUpdateHandler(storage repository.Storage) http.HandlerFunc {
 
 		metricType, name, value := parts[0], parts[1], parts[2]
 
-		err := storage.Update(metricType, name, value)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
+	err := storage.Update(metricType, name, value)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-		logger.Log.Info("Metric received and saved",
-			zap.String("type", metricType),
-			zap.String("name", name),
-			zap.String("value", value),
-		)
-		w.WriteHeader(http.StatusOK)
+	logger.Log.Info("Metric received and saved",
+		zap.String("type", metricType),
+		zap.String("name", name),
+		zap.String("value", value),
+	)
+
+	// Публикуем событие аудита после успешной обработки
+	if auditPublisher != nil && auditPublisher.HasObservers() {
+		event := audit.NewAuditEvent([]string{name}, audit.GetIPAddress(r))
+		auditPublisher.Publish(event)
+	}
+
+	w.WriteHeader(http.StatusOK)
 	}
 }

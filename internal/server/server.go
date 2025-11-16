@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 
+	"github.com/Mihklz/metrixcollector/internal/audit"
 	"github.com/Mihklz/metrixcollector/internal/config"
 	"github.com/Mihklz/metrixcollector/internal/handler"
 	"github.com/Mihklz/metrixcollector/internal/logger"
@@ -28,6 +29,7 @@ type Server struct {
 	db             repository.Database
 	httpServer     *http.Server
 	router         *chi.Mux
+	auditPublisher *audit.AuditPublisher
 }
 
 // NewServer создает новый экземпляр сервера
@@ -40,12 +42,42 @@ func NewServer(cfg *config.ServerConfig, storage repository.Storage, fileService
 		fileService:    fileService,
 		metricsService: metricsService,
 		db:             db,
+		auditPublisher: audit.NewAuditPublisher(),
 	}
+
+	// Инициализируем систему аудита
+	server.setupAudit()
 
 	server.setupRouter()
 	server.setupHTTPServer()
 
 	return server
+}
+
+// setupAudit настраивает систему аудита на основе конфигурации
+func (s *Server) setupAudit() {
+	// Подключаем файловый наблюдатель, если указан путь к файлу
+	if s.config.AuditFile != "" {
+		fileObserver := audit.NewFileAuditObserver(s.config.AuditFile)
+		s.auditPublisher.Subscribe(fileObserver)
+		logger.Log.Info("File audit observer enabled",
+			zap.String("file", s.config.AuditFile),
+		)
+	}
+
+	// Подключаем HTTP наблюдатель, если указан URL
+	if s.config.AuditURL != "" {
+		httpObserver := audit.NewHTTPAuditObserver(s.config.AuditURL)
+		s.auditPublisher.Subscribe(httpObserver)
+		logger.Log.Info("HTTP audit observer enabled",
+			zap.String("url", s.config.AuditURL),
+		)
+	}
+
+	// Если не подключено ни одного наблюдателя, логируем это
+	if !s.auditPublisher.HasObservers() {
+		logger.Log.Info("Audit is disabled - no audit file or URL configured")
+	}
 }
 
 // setupRouter настраивает маршруты
@@ -60,18 +92,18 @@ func (s *Server) setupRouter() {
 	r.Use(middleware.WithHashValidation(s.config.Key))
 
 	// === Старые URL-based эндпоинты (для совместимости) ===
-	r.Post("/update/{type}/{name}/{value}", handler.NewUpdateHandler(s.storage))
+	r.Post("/update/{type}/{name}/{value}", handler.NewUpdateHandler(s.storage, s.auditPublisher))
 	r.Get("/value/{type}/{name}", handler.NewValueHandler(s.storage))
 	r.Get("/", handler.NewRootHandler(s.storage))
 
 	// === Новые JSON API эндпоинты ===
-	r.Post("/update", handler.NewJSONUpdateHandler(s.storage, s.config.Key))
-	r.Post("/update/", handler.NewJSONUpdateHandler(s.storage, s.config.Key))
+	r.Post("/update", handler.NewJSONUpdateHandler(s.storage, s.config.Key, s.auditPublisher))
+	r.Post("/update/", handler.NewJSONUpdateHandler(s.storage, s.config.Key, s.auditPublisher))
 	r.Post("/value", handler.NewJSONValueHandler(s.storage, s.config.Key))
 	r.Post("/value/", handler.NewJSONValueHandler(s.storage, s.config.Key))
 
 	// === Batch API эндпоинт ===
-	r.Post("/updates/", handler.NewBatchUpdateHandler(s.metricsService, s.config.Key))
+	r.Post("/updates/", handler.NewBatchUpdateHandler(s.metricsService, s.config.Key, s.auditPublisher))
 
 	// === Эндпоинт для проверки соединения с БД ===
 	// Если используется PostgreSQL хранилище, создаем новый Database объект для ping
