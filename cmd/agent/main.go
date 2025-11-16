@@ -53,31 +53,99 @@ func main() {
 func runAgent(ctx context.Context, wg *sync.WaitGroup, cfg *config.AgentConfig, sender *agent.MetricsSender) {
 	defer wg.Done()
 
+	// Канал для передачи метрик от сборщика к пулу отправителей
+	metricsCh := make(chan agent.MetricsSet, cfg.RateLimit*2)
+
+	// Группа ожидания для воркеров
+	var workersWg sync.WaitGroup
+
+	// Запускаем пул воркеров для отправки (ограничение на одновременные исходящие запросы)
+	for i := 0; i < cfg.RateLimit; i++ {
+		workersWg.Add(1)
+		go func() {
+			defer workersWg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case ms, ok := <-metricsCh:
+					if !ok {
+						return
+					}
+					if err := sender.SendMetrics(ctx, ms); err != nil {
+						log.Printf("failed to send metrics: %v", err)
+					}
+				}
+			}
+		}()
+	}
+
+	// Сборщик метрик: отдельно runtime и системные метрики
 	tickerPoll := time.NewTicker(cfg.PollInterval)
 	tickerReport := time.NewTicker(cfg.ReportInterval)
 	defer tickerPoll.Stop()
 	defer tickerReport.Stop()
 
-	var currentMetrics agent.MetricsSet
-	var reportWg sync.WaitGroup
+	// Храним последнюю выборку метрик
+	var current agent.MetricsSet
+
+	// Стартуем дополнительный сборщик системных метрик в отдельной горутине
+	// Он будет периодически обновлять current.Gauges дополнительными значениями
+	sysDone := make(chan struct{})
+	var sysMu sync.Mutex
+	latestSys := map[string]float64{}
+	go func() {
+		defer close(sysDone)
+		sysTicker := time.NewTicker(cfg.PollInterval)
+		defer sysTicker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-sysTicker.C:
+				sys := agent.CollectSystem()
+				sysMu.Lock()
+				latestSys = sys
+				sysMu.Unlock()
+			}
+		}
+	}()
 
 	for {
 		select {
 		case <-ctx.Done():
-			// Ждем завершения всех отправок метрик
-			reportWg.Wait()
+			// Завершаем: закрываем канал, ждём воркеров
+			close(metricsCh)
+			workersWg.Wait()
 			return
 		case <-tickerPoll.C:
-			currentMetrics = agent.Collect()
-		case <-tickerReport.C:
-			// Запускаем отправку метрик в отдельной горутине с контролем
-			reportWg.Add(1)
-			go func(metrics agent.MetricsSet) {
-				defer reportWg.Done()
-				if err := sender.SendMetrics(ctx, metrics); err != nil {
-					log.Printf("failed to send metrics: %v", err)
+			// Сбор runtime метрик
+			current = agent.Collect()
+			// Добавим системные метрики
+			sysMu.Lock()
+			for k, v := range latestSys {
+				if current.Gauges == nil {
+					current.Gauges = map[string]float64{}
 				}
-			}(currentMetrics)
+				current.Gauges[k] = v
+			}
+			sysMu.Unlock()
+		case <-tickerReport.C:
+			// Отправляем снимок через канал в пул воркеров
+			snapshot := agent.MetricsSet{
+				Gauges:    make(map[string]float64, len(current.Gauges)),
+				PollCount: current.PollCount,
+			}
+			for k, v := range current.Gauges {
+				snapshot.Gauges[k] = v
+			}
+			select {
+			case metricsCh <- snapshot:
+			case <-ctx.Done():
+				close(metricsCh)
+				workersWg.Wait()
+				return
+			}
 		}
 	}
 }

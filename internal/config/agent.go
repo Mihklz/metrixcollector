@@ -13,6 +13,7 @@ type AgentConfig struct {
 	PollInterval   time.Duration
 	ReportInterval time.Duration
 	Key            string // ключ для подписи данных
+	RateLimit      int    // ограничение на число одновременных исходящих запросов
 }
 
 func LoadAgentConfig() *AgentConfig {
@@ -21,6 +22,7 @@ func LoadAgentConfig() *AgentConfig {
 		pollSec    int
 		reportSec  int
 		key        string
+		rateLimit  int
 	)
 
 	// 1. Устанавливаем значения по умолчанию через флаги
@@ -28,6 +30,7 @@ func LoadAgentConfig() *AgentConfig {
 	flag.IntVar(&pollSec, "p", 2, "poll interval in seconds")
 	flag.IntVar(&reportSec, "r", 10, "report interval in seconds")
 	flag.StringVar(&key, "k", "", "key for signing data")
+	flag.IntVar(&rateLimit, "l", 10, "rate limit for concurrent requests")
 	flag.Parse()
 
 	// 2. Проверяем переменные окружения (приоритет выше флагов)
@@ -60,10 +63,20 @@ func LoadAgentConfig() *AgentConfig {
 		key = envKey
 	}
 
+	// RATE_LIMIT - ограничение на количество одновременных запросов
+	if envRate := os.Getenv("RATE_LIMIT"); envRate != "" {
+		if v, err := strconv.Atoi(envRate); err == nil {
+			rateLimit = v
+		} else {
+			log.Printf("Invalid RATE_LIMIT value: %s, using default: %d", envRate, rateLimit)
+		}
+	}
+
 	return &AgentConfig{
 		ServerAddr:     "http://" + serverAddr,
 		PollInterval:   time.Duration(pollSec) * time.Second,
 		ReportInterval: time.Duration(reportSec) * time.Second,
 		Key:            key,
+		RateLimit:      rateLimit,
 	}
 }
