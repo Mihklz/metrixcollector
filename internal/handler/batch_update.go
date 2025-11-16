@@ -14,11 +14,12 @@ import (
 // BatchUpdateHandler обрабатывает запросы для пакетного обновления метрик
 type BatchUpdateHandler struct {
 	metricsService *service.MetricsService
+	key            string
 }
 
 // NewBatchUpdateHandler создает новый обработчик для пакетного обновления метрик
-func NewBatchUpdateHandler(metricsService *service.MetricsService) http.HandlerFunc {
-	handler := &BatchUpdateHandler{metricsService: metricsService}
+func NewBatchUpdateHandler(metricsService *service.MetricsService, key string) http.HandlerFunc {
+	handler := &BatchUpdateHandler{metricsService: metricsService, key: key}
 	return handler.Handle
 }
 
@@ -54,6 +55,6 @@ func (h *BatchUpdateHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	// Отправляем пустой ответ с хешем
+	WriteResponseWithHash(w, []byte(""), h.key, http.StatusOK, "application/json")
 }

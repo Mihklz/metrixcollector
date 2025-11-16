@@ -60,7 +60,7 @@ func validateJSONRequest(w http.ResponseWriter, r *http.Request) (*models.Metric
 
 // NewJSONUpdateHandler создаёт обработчик для POST /update (JSON API)
 // Принимает метрики в формате JSON и сохраняет их в хранилище
-func NewJSONUpdateHandler(storage repository.Storage) http.HandlerFunc {
+func NewJSONUpdateHandler(storage repository.Storage, key string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Общая валидация и декодирование
 		metric, ok := validateJSONRequest(w, r)
@@ -111,14 +111,14 @@ func NewJSONUpdateHandler(storage repository.Storage) http.HandlerFunc {
 			zap.String("type", metric.MType),
 		)
 
-		// Отправляем успешный ответ
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-
-		// Возвращаем сохранённую метрику в ответе
-		encoder := json.NewEncoder(w)
-		if err := encoder.Encode(metric); err != nil {
+		// Возвращаем сохранённую метрику в ответе с хешем
+		responseData, err := json.Marshal(metric)
+		if err != nil {
 			logger.Log.Error("Failed to encode response JSON", zap.Error(err))
+			http.Error(w, "failed to encode response", http.StatusInternalServerError)
+			return
 		}
+
+		WriteResponseWithHash(w, responseData, key, http.StatusOK, "application/json")
 	}
 }

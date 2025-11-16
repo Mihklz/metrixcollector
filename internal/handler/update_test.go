@@ -12,7 +12,7 @@ import (
 func TestUpdateHandler_ValidGauge(t *testing.T) {
 	// Инициализируем логгер для тестов
 	_ = logger.Initialize()
-	
+
 	store := repository.NewMemStorage()
 	handler := NewUpdateHandler(store)
 
@@ -35,7 +35,7 @@ func TestUpdateHandler_ValidGauge(t *testing.T) {
 func TestUpdateHandler_UnsupportedMethod(t *testing.T) {
 	// Инициализируем логгер для тестов
 	_ = logger.Initialize()
-	
+
 	store := repository.NewMemStorage()
 	handler := NewUpdateHandler(store)
 
@@ -55,7 +55,7 @@ func TestUpdateHandler_UnsupportedMethod(t *testing.T) {
 func TestUpdateHandler_InvalidPath(t *testing.T) {
 	// Инициализируем логгер для тестов
 	_ = logger.Initialize()
-	
+
 	store := repository.NewMemStorage()
 	handler := NewUpdateHandler(store)
 

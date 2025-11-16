@@ -11,24 +11,27 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/Mihklz/metrixcollector/internal/crypto"
 	"github.com/Mihklz/metrixcollector/internal/logger"
 	models "github.com/Mihklz/metrixcollector/internal/model"
 	"github.com/Mihklz/metrixcollector/internal/retry"
 )
 
 type MetricsSender struct {
-	client     *http.Client
-	serverAddr string
+	client      *http.Client
+	serverAddr  string
 	retryConfig *retry.RetryConfig
+	key         string // ключ для подписи данных
 }
 
-func NewMetricsSender(serverAddr string) *MetricsSender {
+func NewMetricsSender(serverAddr string, key string) *MetricsSender {
 	return &MetricsSender{
 		client: &http.Client{
 			Timeout: 10 * time.Second,
 		},
 		serverAddr:  serverAddr,
 		retryConfig: retry.DefaultRetryConfig(),
+		key:         key,
 	}
 }
 
@@ -55,7 +58,7 @@ func (s *MetricsSender) SendMetrics(ctx context.Context, metrics MetricsSet) err
 	err := retry.Execute(ctx, s.retryConfig, func() error {
 		return s.SendMetricsBatch(ctx, metrics)
 	})
-	
+
 	if err != nil {
 		logger.Log.Warn("Batch send failed after retries, falling back to individual requests", zap.Error(err))
 
@@ -123,6 +126,12 @@ func (s *MetricsSender) SendMetricsBatch(ctx context.Context, metrics MetricsSet
 	req.Header.Set("Content-Encoding", "gzip")
 	req.Header.Set("Accept-Encoding", "gzip")
 
+	// Добавляем хеш в заголовок, если есть ключ
+	if s.key != "" {
+		hash := crypto.CalculateHMAC(jsonData, s.key)
+		req.Header.Set("HashSHA256", hash)
+	}
+
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("send batch error: %w", err)
@@ -150,7 +159,7 @@ func (s *MetricsSender) sendMetricsIndividually(ctx context.Context, metrics Met
 		err := retry.Execute(ctx, s.retryConfig, func() error {
 			return s.sendGauge(name, value)
 		})
-		
+
 		if err != nil {
 			logger.Log.Error("Failed to send gauge metric after retries",
 				zap.String("name", name),
@@ -171,7 +180,7 @@ func (s *MetricsSender) sendMetricsIndividually(ctx context.Context, metrics Met
 	err := retry.Execute(ctx, s.retryConfig, func() error {
 		return s.sendCounter("PollCount", metrics.PollCount)
 	})
-	
+
 	if err != nil {
 		logger.Log.Error("Failed to send counter metric after retries",
 			zap.String("name", "PollCount"),
@@ -213,6 +222,12 @@ func (s *MetricsSender) sendGauge(name string, value float64) error {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Content-Encoding", "gzip")
 	req.Header.Set("Accept-Encoding", "gzip")
+
+	// Добавляем хеш в заголовок, если есть ключ
+	if s.key != "" {
+		hash := crypto.CalculateHMAC(jsonData, s.key)
+		req.Header.Set("HashSHA256", hash)
+	}
 
 	resp, err := s.client.Do(req)
 	if err != nil {
@@ -256,6 +271,12 @@ func (s *MetricsSender) sendCounter(name string, value int64) error {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Content-Encoding", "gzip")
 	req.Header.Set("Accept-Encoding", "gzip")
+
+	// Добавляем хеш в заголовок, если есть ключ
+	if s.key != "" {
+		hash := crypto.CalculateHMAC(jsonData, s.key)
+		req.Header.Set("HashSHA256", hash)
+	}
 
 	resp, err := s.client.Do(req)
 	if err != nil {

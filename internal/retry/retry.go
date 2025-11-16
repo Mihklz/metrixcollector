@@ -12,7 +12,7 @@ import (
 
 // RetryConfig конфигурация для retry-логики
 type RetryConfig struct {
-	MaxAttempts int           // Максимальное количество попыток (включая первую)
+	MaxAttempts int             // Максимальное количество попыток (включая первую)
 	Delays      []time.Duration // Задержки между попытками
 	Classifier  ErrorClassifier // Классификатор ошибок
 }
@@ -41,13 +41,13 @@ func Execute(ctx context.Context, config *RetryConfig, operation func() error) e
 		// Выполняем операцию
 		err := operation()
 		if err == nil {
-		// Успешно выполнено
-		if attempt > 0 && logger.Log != nil {
-			logger.Log.Info("Operation succeeded after retry",
-				zap.Int("attempt", attempt+1),
-				zap.Int("max_attempts", config.MaxAttempts),
-			)
-		}
+			// Успешно выполнено
+			if attempt > 0 && logger.Log != nil {
+				logger.Log.Info("Operation succeeded after retry",
+					zap.Int("attempt", attempt+1),
+					zap.Int("max_attempts", config.MaxAttempts),
+				)
+			}
 			return nil
 		}
 

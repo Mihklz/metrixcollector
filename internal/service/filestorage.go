@@ -35,7 +35,7 @@ func (fs *FileStorageService) StartPeriodicSave(ctx context.Context) {
 		fs.logger.Info("Periodic save disabled (interval <= 0)")
 		return
 	}
-	
+
 	ticker := time.NewTicker(fs.interval)
 	defer ticker.Stop()
 
