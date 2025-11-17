@@ -13,6 +13,8 @@ type ServerConfig struct {
 	Restore         bool   // загружать ли метрики при старте
 	DatabaseDSN     string // строка подключения к базе данных
 	Key             string // ключ для подписи данных
+	AuditFile       string // путь к файлу для логов аудита
+	AuditURL        string // URL для отправки логов аудита
 }
 
 func LoadServerConfig() *ServerConfig {
@@ -22,6 +24,8 @@ func LoadServerConfig() *ServerConfig {
 	var restore bool
 	var databaseDSN string
 	var key string
+	var auditFile string
+	var auditURL string
 
 	// 1. Устанавливаем значения по умолчанию
 	flag.StringVar(&runAddr, "a", "localhost:8080", "address and port to run HTTP server")
@@ -30,6 +34,8 @@ func LoadServerConfig() *ServerConfig {
 	flag.BoolVar(&restore, "r", true, "restore previously saved values")
 	flag.StringVar(&databaseDSN, "d", "", "database connection string")
 	flag.StringVar(&key, "k", "", "key for signing data")
+	flag.StringVar(&auditFile, "audit-file", "", "audit log file path")
+	flag.StringVar(&auditURL, "audit-url", "", "audit log URL")
 	flag.Parse()
 
 	// 2. Проверяем переменные окружения (приоритет выше флагов)
@@ -61,6 +67,14 @@ func LoadServerConfig() *ServerConfig {
 		key = envKey
 	}
 
+	if envAuditFile := os.Getenv("AUDIT_FILE"); envAuditFile != "" {
+		auditFile = envAuditFile
+	}
+
+	if envAuditURL := os.Getenv("AUDIT_URL"); envAuditURL != "" {
+		auditURL = envAuditURL
+	}
+
 	return &ServerConfig{
 		RunAddr:         runAddr,
 		StoreInterval:   storeInterval,
@@ -68,5 +82,7 @@ func LoadServerConfig() *ServerConfig {
 		Restore:         restore,
 		DatabaseDSN:     databaseDSN,
 		Key:             key,
+		AuditFile:       auditFile,
+		AuditURL:        auditURL,
 	}
 }
