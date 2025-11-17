@@ -216,4 +216,3 @@ func TestAuditEventJSONFormat(t *testing.T) {
 		}
 	}
 }
-

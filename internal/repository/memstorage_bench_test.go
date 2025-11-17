@@ -58,4 +58,3 @@ func BenchmarkMemStorageSaveToFile(b *testing.B) {
 		}
 	}
 }
-

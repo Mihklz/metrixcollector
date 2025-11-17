@@ -68,4 +68,3 @@ func (p *AuditPublisher) HasObservers() bool {
 	defer p.mu.RUnlock()
 	return len(p.observers) > 0
 }
-

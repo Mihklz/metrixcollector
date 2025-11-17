@@ -202,4 +202,3 @@ func TestBatchUpdateHandlerLargeBatch(t *testing.T) {
 		t.Errorf("Expected 100 metrics in audit event, got %d", len(event.Metrics))
 	}
 }
-

@@ -164,4 +164,3 @@ func TestHTTPAuditObserverConcurrent(t *testing.T) {
 		t.Errorf("Expected 10 received events, got %d", receivedCount)
 	}
 }
-

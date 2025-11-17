@@ -70,4 +70,3 @@ func main() {
 		log.Fatalf("Server failed to start: %v\n", err)
 	}
 }
-

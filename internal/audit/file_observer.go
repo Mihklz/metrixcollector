@@ -74,4 +74,3 @@ func (f *FileAuditObserver) Notify(event *AuditEvent) error {
 
 	return nil
 }
-

@@ -195,4 +195,3 @@ func TestFileAuditObserverAppends(t *testing.T) {
 		t.Error("New data was not appended correctly")
 	}
 }
-

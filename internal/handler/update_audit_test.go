@@ -64,7 +64,7 @@ func TestUpdateHandlerWithAudit(t *testing.T) {
 // TestUpdateHandlerWithoutAudit проверяет работу без аудита
 func TestUpdateHandlerWithoutAudit(t *testing.T) {
 	storage := repository.NewMemStorage()
-	
+
 	// Передаем nil вместо publisher
 	handler := NewUpdateHandler(storage, nil)
 
@@ -138,4 +138,3 @@ func TestUpdateHandlerAuditWithXForwardedFor(t *testing.T) {
 		t.Errorf("Expected IP from X-Forwarded-For (203.0.113.5), got %s", event.IPAddress)
 	}
 }
-

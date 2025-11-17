@@ -15,4 +15,3 @@ type Publisher interface {
 	// Publish отправляет событие всем подписчикам
 	Publish(event *AuditEvent)
 }
-

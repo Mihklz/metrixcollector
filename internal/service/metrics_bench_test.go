@@ -43,4 +43,3 @@ func BenchmarkMetricsServiceUpdateBatch(b *testing.B) {
 		}
 	}
 }
-

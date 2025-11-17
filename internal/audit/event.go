@@ -25,4 +25,3 @@ func NewAuditEvent(metrics []string, ipAddress string) *AuditEvent {
 func (e *AuditEvent) ToJSON() ([]byte, error) {
 	return json.Marshal(e)
 }
-

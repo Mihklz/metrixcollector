@@ -36,4 +36,3 @@ func GetIPAddress(r *http.Request) string {
 
 	return ip
 }
-

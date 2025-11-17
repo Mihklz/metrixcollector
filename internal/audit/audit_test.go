@@ -174,11 +174,11 @@ func TestFileAuditObserver(t *testing.T) {
 // TestGetIPAddress проверяет извлечение IP-адреса из запроса
 func TestGetIPAddress(t *testing.T) {
 	tests := []struct {
-		name           string
-		remoteAddr     string
-		xForwardedFor  string
-		xRealIP        string
-		expectedIP     string
+		name          string
+		remoteAddr    string
+		xForwardedFor string
+		xRealIP       string
+		expectedIP    string
 	}{
 		{
 			name:       "Simple RemoteAddr",
@@ -258,4 +258,3 @@ func createMockHTTPRequest(remoteAddr, xForwardedFor, xRealIP string) (*http.Req
 
 	return req, nil
 }
-

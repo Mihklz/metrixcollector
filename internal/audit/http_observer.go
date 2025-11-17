@@ -85,4 +85,3 @@ func (h *HTTPAuditObserver) Notify(event *AuditEvent) error {
 
 	return nil
 }
-

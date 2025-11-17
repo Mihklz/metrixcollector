@@ -150,4 +150,3 @@ func TestJSONUpdateHandlerAuditMultipleRequests(t *testing.T) {
 		}
 	}
 }
-

@@ -26,24 +26,24 @@ func NewUpdateHandler(storage repository.Storage, auditPublisher *audit.AuditPub
 
 		metricType, name, value := parts[0], parts[1], parts[2]
 
-	err := storage.Update(metricType, name, value)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+		err := storage.Update(metricType, name, value)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 
-	logger.Log.Info("Metric received and saved",
-		zap.String("type", metricType),
-		zap.String("name", name),
-		zap.String("value", value),
-	)
+		logger.Log.Info("Metric received and saved",
+			zap.String("type", metricType),
+			zap.String("name", name),
+			zap.String("value", value),
+		)
 
-	// Публикуем событие аудита после успешной обработки
-	if auditPublisher != nil && auditPublisher.HasObservers() {
-		event := audit.NewAuditEvent([]string{name}, audit.GetIPAddress(r))
-		auditPublisher.Publish(event)
-	}
+		// Публикуем событие аудита после успешной обработки
+		if auditPublisher != nil && auditPublisher.HasObservers() {
+			event := audit.NewAuditEvent([]string{name}, audit.GetIPAddress(r))
+			auditPublisher.Publish(event)
+		}
 
-	w.WriteHeader(http.StatusOK)
+		w.WriteHeader(http.StatusOK)
 	}
 }

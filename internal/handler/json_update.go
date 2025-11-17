@@ -106,20 +106,20 @@ func NewJSONUpdateHandler(storage repository.Storage, key string, auditPublisher
 			return
 		}
 
-	// Логируем успешное сохранение
-	logger.Log.Info("Metric saved successfully",
-		zap.String("id", metric.ID),
-		zap.String("type", metric.MType),
-	)
+		// Логируем успешное сохранение
+		logger.Log.Info("Metric saved successfully",
+			zap.String("id", metric.ID),
+			zap.String("type", metric.MType),
+		)
 
-	// Публикуем событие аудита после успешной обработки
-	if auditPublisher != nil && auditPublisher.HasObservers() {
-		event := audit.NewAuditEvent([]string{metric.ID}, audit.GetIPAddress(r))
-		auditPublisher.Publish(event)
-	}
+		// Публикуем событие аудита после успешной обработки
+		if auditPublisher != nil && auditPublisher.HasObservers() {
+			event := audit.NewAuditEvent([]string{metric.ID}, audit.GetIPAddress(r))
+			auditPublisher.Publish(event)
+		}
 
-	// Возвращаем сохранённую метрику в ответе с хешем
-	responseData, err := json.Marshal(metric)
+		// Возвращаем сохранённую метрику в ответе с хешем
+		responseData, err := json.Marshal(metric)
 		if err != nil {
 			logger.Log.Error("Failed to encode response JSON", zap.Error(err))
 			http.Error(w, "failed to encode response", http.StatusInternalServerError)
