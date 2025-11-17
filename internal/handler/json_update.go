@@ -7,6 +7,7 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/Mihklz/metrixcollector/internal/audit"
 	"github.com/Mihklz/metrixcollector/internal/logger"
 	models "github.com/Mihklz/metrixcollector/internal/model"
 	"github.com/Mihklz/metrixcollector/internal/repository"
@@ -60,7 +61,7 @@ func validateJSONRequest(w http.ResponseWriter, r *http.Request) (*models.Metric
 
 // NewJSONUpdateHandler создаёт обработчик для POST /update (JSON API)
 // Принимает метрики в формате JSON и сохраняет их в хранилище
-func NewJSONUpdateHandler(storage repository.Storage, key string) http.HandlerFunc {
+func NewJSONUpdateHandler(storage repository.Storage, key string, auditPublisher *audit.AuditPublisher) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Общая валидация и декодирование
 		metric, ok := validateJSONRequest(w, r)
@@ -105,14 +106,20 @@ func NewJSONUpdateHandler(storage repository.Storage, key string) http.HandlerFu
 			return
 		}
 
-		// Логируем успешное сохранение
-		logger.Log.Info("Metric saved successfully",
-			zap.String("id", metric.ID),
-			zap.String("type", metric.MType),
-		)
+	// Логируем успешное сохранение
+	logger.Log.Info("Metric saved successfully",
+		zap.String("id", metric.ID),
+		zap.String("type", metric.MType),
+	)
 
-		// Возвращаем сохранённую метрику в ответе с хешем
-		responseData, err := json.Marshal(metric)
+	// Публикуем событие аудита после успешной обработки
+	if auditPublisher != nil && auditPublisher.HasObservers() {
+		event := audit.NewAuditEvent([]string{metric.ID}, audit.GetIPAddress(r))
+		auditPublisher.Publish(event)
+	}
+
+	// Возвращаем сохранённую метрику в ответе с хешем
+	responseData, err := json.Marshal(metric)
 		if err != nil {
 			logger.Log.Error("Failed to encode response JSON", zap.Error(err))
 			http.Error(w, "failed to encode response", http.StatusInternalServerError)

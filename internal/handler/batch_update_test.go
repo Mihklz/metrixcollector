@@ -26,7 +26,7 @@ func init() {
 func TestBatchUpdateHandler(t *testing.T) {
 	storage := repository.NewMemStorage()
 	metricsService := service.NewMetricsService(storage)
-	handler := NewBatchUpdateHandler(metricsService, "")
+	handler := NewBatchUpdateHandler(metricsService, "", nil)
 
 	tests := []struct {
 		name           string
@@ -132,7 +132,7 @@ func TestBatchUpdateHandler(t *testing.T) {
 func TestBatchUpdateHandlerMethods(t *testing.T) {
 	storage := repository.NewMemStorage()
 	metricsService := service.NewMetricsService(storage)
-	handler := NewBatchUpdateHandler(metricsService, "")
+	handler := NewBatchUpdateHandler(metricsService, "", nil)
 
 	tests := []struct {
 		name           string
@@ -172,7 +172,7 @@ func TestBatchUpdateHandlerMethods(t *testing.T) {
 func TestBatchUpdateHandlerContentType(t *testing.T) {
 	storage := repository.NewMemStorage()
 	metricsService := service.NewMetricsService(storage)
-	handler := NewBatchUpdateHandler(metricsService, "")
+	handler := NewBatchUpdateHandler(metricsService, "", nil)
 
 	tests := []struct {
 		name           string
