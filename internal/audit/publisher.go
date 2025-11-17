@@ -8,27 +8,27 @@ import (
 	"github.com/Mihklz/metrixcollector/internal/logger"
 )
 
-// AuditPublisher реализует Publisher для управления наблюдателями
+// AuditPublisher реализует Publisher для управления наблюдателями.
 type AuditPublisher struct {
 	observers []Observer
 	mu        sync.RWMutex
 }
 
-// NewAuditPublisher создает новый экземпляр издателя событий аудита
+// NewAuditPublisher создает новый экземпляр издателя событий аудита.
 func NewAuditPublisher() *AuditPublisher {
 	return &AuditPublisher{
 		observers: make([]Observer, 0),
 	}
 }
 
-// Subscribe добавляет наблюдателя в список подписчиков
+// Subscribe добавляет наблюдателя в список подписчиков.
 func (p *AuditPublisher) Subscribe(observer Observer) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.observers = append(p.observers, observer)
 }
 
-// Unsubscribe удаляет наблюдателя из списка подписчиков
+// Unsubscribe удаляет наблюдателя из списка подписчиков.
 func (p *AuditPublisher) Unsubscribe(observer Observer) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -40,8 +40,8 @@ func (p *AuditPublisher) Unsubscribe(observer Observer) {
 	}
 }
 
-// Publish отправляет событие всем подписчикам
-// Выполняется асинхронно, чтобы не блокировать основную обработку запросов
+// Publish отправляет событие всем подписчикам.
+// Выполняется асинхронно, чтобы не блокировать основную обработку запросов.
 func (p *AuditPublisher) Publish(event *AuditEvent) {
 	p.mu.RLock()
 	observers := make([]Observer, len(p.observers))
@@ -62,7 +62,7 @@ func (p *AuditPublisher) Publish(event *AuditEvent) {
 	}
 }
 
-// HasObservers проверяет, есть ли зарегистрированные наблюдатели
+// HasObservers проверяет, есть ли зарегистрированные наблюдатели.
 func (p *AuditPublisher) HasObservers() bool {
 	p.mu.RLock()
 	defer p.mu.RUnlock()

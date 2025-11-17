@@ -9,20 +9,20 @@ import (
 	"github.com/Mihklz/metrixcollector/internal/logger"
 )
 
-// FileAuditObserver реализует Observer для записи событий аудита в файл
+// FileAuditObserver реализует Observer для записи событий аудита в файл.
 type FileAuditObserver struct {
 	filePath string
 	mu       sync.Mutex
 }
 
-// NewFileAuditObserver создает новый наблюдатель для записи в файл
+// NewFileAuditObserver создает новый наблюдатель для записи в файл.
 func NewFileAuditObserver(filePath string) *FileAuditObserver {
 	return &FileAuditObserver{
 		filePath: filePath,
 	}
 }
 
-// Notify записывает событие аудита в файл
+// Notify записывает событие аудита в файл.
 func (f *FileAuditObserver) Notify(event *AuditEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

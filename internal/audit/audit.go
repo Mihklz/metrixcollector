@@ -1,12 +1,12 @@
 package audit
 
-// Observer представляет наблюдателя, который получает события аудита
+// Observer представляет наблюдателя, который получает события аудита.
 type Observer interface {
 	// Notify отправляет событие аудита наблюдателю
 	Notify(event *AuditEvent) error
 }
 
-// Publisher управляет списком наблюдателей и отправляет им события
+// Publisher управляет списком наблюдателей и отправляет им события.
 type Publisher interface {
 	// Subscribe добавляет наблюдателя в список подписчиков
 	Subscribe(observer Observer)

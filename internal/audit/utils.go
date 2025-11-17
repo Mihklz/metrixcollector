@@ -6,8 +6,8 @@ import (
 	"strings"
 )
 
-// GetIPAddress извлекает IP-адрес из HTTP-запроса
-// Учитывает заголовки X-Forwarded-For и X-Real-IP для работы за прокси
+// GetIPAddress извлекает IP-адрес из HTTP-запроса.
+// Учитывает заголовки X-Forwarded-For и X-Real-IP для работы за прокси.
 func GetIPAddress(r *http.Request) string {
 	// Проверяем заголовок X-Forwarded-For (может содержать несколько IP через запятую)
 	forwarded := r.Header.Get("X-Forwarded-For")

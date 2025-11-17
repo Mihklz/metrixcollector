@@ -10,13 +10,13 @@ import (
 	"github.com/Mihklz/metrixcollector/internal/logger"
 )
 
-// HTTPAuditObserver реализует Observer для отправки событий аудита по HTTP
+// HTTPAuditObserver реализует Observer для отправки событий аудита по HTTP.
 type HTTPAuditObserver struct {
 	url    string
 	client *http.Client
 }
 
-// NewHTTPAuditObserver создает новый наблюдатель для отправки по HTTP
+// NewHTTPAuditObserver создает новый наблюдатель для отправки по HTTP.
 func NewHTTPAuditObserver(url string) *HTTPAuditObserver {
 	return &HTTPAuditObserver{
 		url: url,
@@ -26,7 +26,7 @@ func NewHTTPAuditObserver(url string) *HTTPAuditObserver {
 	}
 }
 
-// Notify отправляет событие аудита на удаленный сервер по HTTP POST
+// Notify отправляет событие аудита на удаленный сервер по HTTP POST.
 func (h *HTTPAuditObserver) Notify(event *AuditEvent) error {
 	// Преобразуем событие в JSON
 	data, err := event.ToJSON()

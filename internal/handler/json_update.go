@@ -59,8 +59,8 @@ func validateJSONRequest(w http.ResponseWriter, r *http.Request) (*models.Metric
 	return &metric, true
 }
 
-// NewJSONUpdateHandler создаёт обработчик для POST /update (JSON API)
-// Принимает метрики в формате JSON и сохраняет их в хранилище
+// NewJSONUpdateHandler создаёт обработчик JSON API для обновления метрик.
+// Обработчик принимает POST /update и сохраняет значение в хранилище.
 func NewJSONUpdateHandler(storage repository.Storage, key string, auditPublisher *audit.AuditPublisher) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Общая валидация и декодирование

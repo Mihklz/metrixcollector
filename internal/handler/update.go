@@ -11,6 +11,7 @@ import (
 	"github.com/Mihklz/metrixcollector/internal/repository"
 )
 
+// NewUpdateHandler возвращает обработчик URL-based API для обновления метрик.
 func NewUpdateHandler(storage repository.Storage, auditPublisher *audit.AuditPublisher) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {

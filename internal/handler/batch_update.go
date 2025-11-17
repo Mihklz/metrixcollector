@@ -12,14 +12,14 @@ import (
 	"github.com/Mihklz/metrixcollector/internal/service"
 )
 
-// BatchUpdateHandler обрабатывает запросы для пакетного обновления метрик
+// BatchUpdateHandler обрабатывает запросы для пакетного обновления метрик.
 type BatchUpdateHandler struct {
 	metricsService *service.MetricsService
 	key            string
 	auditPublisher *audit.AuditPublisher
 }
 
-// NewBatchUpdateHandler создает новый обработчик для пакетного обновления метрик
+// NewBatchUpdateHandler создает новый обработчик для пакетного обновления метрик.
 func NewBatchUpdateHandler(metricsService *service.MetricsService, key string, auditPublisher *audit.AuditPublisher) http.HandlerFunc {
 	handler := &BatchUpdateHandler{
 		metricsService: metricsService,
@@ -29,7 +29,7 @@ func NewBatchUpdateHandler(metricsService *service.MetricsService, key string, a
 	return handler.Handle
 }
 
-// Handle обрабатывает POST запрос к /updates/
+// Handle обрабатывает POST запрос к /updates/.
 func (h *BatchUpdateHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
