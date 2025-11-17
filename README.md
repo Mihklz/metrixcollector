@@ -42,3 +42,20 @@ git fetch template && git checkout template/main .github
 - **Clean Architecture**
 - **Hexagonal Architecture**
 - **Layered Architecture**
+
+## Memory profile diff
+
+Результаты оптимизации `MemStorage.SaveToFile` (снято с помощью `go test -bench=BenchmarkMemStorageSaveToFile -memprofile`):
+
+```
+$ go tool pprof -top -diff_base=profiles/base.pprof profiles/result.pprof
+File: repository.test
+Type: alloc_space
+Showing nodes accounting for -958.54MB, 54.90% of 1746.10MB total
+      flat  flat%   sum%        cum   cum%
+ -707.17MB 40.50% 40.50%  -957.54MB 54.84%  github.com/Mihklz/metrixcollector/internal/repository.(*MemStorage).SaveToFile
+ -268.53MB 15.38% 55.88%  -268.53MB 15.38%  bytes.growSlice
+   19.26MB  1.10% 54.78%  -248.76MB 14.25%  encoding/json.Marshal
+```
+
+Отрицательные значения показывают снижение потребления памяти после оптимизаций.

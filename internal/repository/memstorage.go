@@ -91,7 +91,7 @@ func (m *MemStorage) SaveToFile(filename string) error {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	var metrics []models.Metrics
+	metrics := make([]models.Metrics, 0, len(m.Gauges)+len(m.Counters))
 
 	// Добавляем все gauge метрики
 	for name, value := range m.Gauges {
