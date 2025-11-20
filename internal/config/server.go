@@ -39,39 +39,39 @@ func LoadServerConfig() *ServerConfig {
 	flag.Parse()
 
 	// 2. Проверяем переменные окружения (приоритет выше флагов)
-	if envRunAddr := os.Getenv("ADDRESS"); envRunAddr != "" {
+	if envRunAddr, ok := os.LookupEnv("ADDRESS"); ok {
 		runAddr = envRunAddr
 	}
 
-	if envStoreInterval := os.Getenv("STORE_INTERVAL"); envStoreInterval != "" {
+	if envStoreInterval, ok := os.LookupEnv("STORE_INTERVAL"); ok {
 		if interval, err := strconv.Atoi(envStoreInterval); err == nil {
 			storeInterval = interval
 		}
 	}
 
-	if envFileStoragePath := os.Getenv("FILE_STORAGE_PATH"); envFileStoragePath != "" {
+	if envFileStoragePath, ok := os.LookupEnv("FILE_STORAGE_PATH"); ok {
 		fileStoragePath = envFileStoragePath
 	}
 
-	if envRestore := os.Getenv("RESTORE"); envRestore != "" {
+	if envRestore, ok := os.LookupEnv("RESTORE"); ok {
 		if restoreValue, err := strconv.ParseBool(envRestore); err == nil {
 			restore = restoreValue
 		}
 	}
 
-	if envDatabaseDSN := os.Getenv("DATABASE_DSN"); envDatabaseDSN != "" {
+	if envDatabaseDSN, ok := os.LookupEnv("DATABASE_DSN"); ok {
 		databaseDSN = envDatabaseDSN
 	}
 
-	if envKey := os.Getenv("KEY"); envKey != "" {
+	if envKey, ok := os.LookupEnv("KEY"); ok {
 		key = envKey
 	}
 
-	if envAuditFile := os.Getenv("AUDIT_FILE"); envAuditFile != "" {
+	if envAuditFile, ok := os.LookupEnv("AUDIT_FILE"); ok {
 		auditFile = envAuditFile
 	}
 
-	if envAuditURL := os.Getenv("AUDIT_URL"); envAuditURL != "" {
+	if envAuditURL, ok := os.LookupEnv("AUDIT_URL"); ok {
 		auditURL = envAuditURL
 	}
 
