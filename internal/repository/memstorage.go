@@ -11,15 +11,20 @@ import (
 	models "github.com/Mihklz/metrixcollector/internal/model"
 )
 
+// Gauge представляет значение метрики gauge.
 type Gauge float64
+
+// Counter представляет значение метрики counter.
 type Counter int64
 
+// MemStorage хранит метрики в памяти и обеспечивает потокобезопасный доступ.
 type MemStorage struct {
 	mu       sync.RWMutex
 	Gauges   map[string]Gauge
 	Counters map[string]Counter
 }
 
+// NewMemStorage создает новое in-memory хранилище метрик.
 func NewMemStorage() *MemStorage {
 	return &MemStorage{
 		Gauges:   make(map[string]Gauge),
@@ -27,6 +32,7 @@ func NewMemStorage() *MemStorage {
 	}
 }
 
+// Update обновляет значение одной метрики по ее типу и имени.
 func (m *MemStorage) Update(metricType, name, value string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -50,6 +56,8 @@ func (m *MemStorage) Update(metricType, name, value string) error {
 
 	return nil
 }
+
+// GetGauge возвращает значение gauge-метрики по имени.
 func (m *MemStorage) GetGauge(name string) (Gauge, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -57,6 +65,7 @@ func (m *MemStorage) GetGauge(name string) (Gauge, bool) {
 	return val, ok
 }
 
+// GetCounter возвращает значение counter-метрики по имени.
 func (m *MemStorage) GetCounter(name string) (Counter, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -64,6 +73,7 @@ func (m *MemStorage) GetCounter(name string) (Counter, bool) {
 	return val, ok
 }
 
+// GetAllGauges возвращает копию всех gauge-метрик.
 func (m *MemStorage) GetAllGauges() map[string]Gauge {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -75,6 +85,7 @@ func (m *MemStorage) GetAllGauges() map[string]Gauge {
 	return copyMap
 }
 
+// GetAllCounters возвращает копию всех counter-метрик.
 func (m *MemStorage) GetAllCounters() map[string]Counter {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -86,12 +97,12 @@ func (m *MemStorage) GetAllCounters() map[string]Counter {
 	return copyMap
 }
 
-// SaveToFile сохраняет все метрики в файл в JSON формате
+// SaveToFile сохраняет все метрики в файл в JSON формате.
 func (m *MemStorage) SaveToFile(filename string) error {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	var metrics []models.Metrics
+	metrics := make([]models.Metrics, 0, len(m.Gauges)+len(m.Counters))
 
 	// Добавляем все gauge метрики
 	for name, value := range m.Gauges {
@@ -128,7 +139,7 @@ func (m *MemStorage) SaveToFile(filename string) error {
 	return nil
 }
 
-// LoadFromFile загружает метрики из файла в JSON формате
+// LoadFromFile загружает метрики из файла в JSON формате.
 func (m *MemStorage) LoadFromFile(filename string) error {
 	// Проверяем, существует ли файл
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
@@ -173,7 +184,7 @@ func (m *MemStorage) LoadFromFile(filename string) error {
 	return nil
 }
 
-// UpdateBatch обновляет множество метрик в рамках одной операции с блокировкой
+// UpdateBatch обновляет множество метрик в рамках одной операции с блокировкой.
 func (m *MemStorage) UpdateBatch(metrics []models.Metrics) error {
 	if len(metrics) == 0 {
 		return nil

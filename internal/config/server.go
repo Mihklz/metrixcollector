@@ -13,6 +13,8 @@ type ServerConfig struct {
 	Restore         bool   // загружать ли метрики при старте
 	DatabaseDSN     string // строка подключения к базе данных
 	Key             string // ключ для подписи данных
+	AuditFile       string // путь к файлу для логов аудита
+	AuditURL        string // URL для отправки логов аудита
 }
 
 func LoadServerConfig() *ServerConfig {
@@ -22,6 +24,8 @@ func LoadServerConfig() *ServerConfig {
 	var restore bool
 	var databaseDSN string
 	var key string
+	var auditFile string
+	var auditURL string
 
 	// 1. Устанавливаем значения по умолчанию
 	flag.StringVar(&runAddr, "a", "localhost:8080", "address and port to run HTTP server")
@@ -30,35 +34,45 @@ func LoadServerConfig() *ServerConfig {
 	flag.BoolVar(&restore, "r", true, "restore previously saved values")
 	flag.StringVar(&databaseDSN, "d", "", "database connection string")
 	flag.StringVar(&key, "k", "", "key for signing data")
+	flag.StringVar(&auditFile, "audit-file", "", "audit log file path")
+	flag.StringVar(&auditURL, "audit-url", "", "audit log URL")
 	flag.Parse()
 
 	// 2. Проверяем переменные окружения (приоритет выше флагов)
-	if envRunAddr := os.Getenv("ADDRESS"); envRunAddr != "" {
+	if envRunAddr, ok := os.LookupEnv("ADDRESS"); ok {
 		runAddr = envRunAddr
 	}
 
-	if envStoreInterval := os.Getenv("STORE_INTERVAL"); envStoreInterval != "" {
+	if envStoreInterval, ok := os.LookupEnv("STORE_INTERVAL"); ok {
 		if interval, err := strconv.Atoi(envStoreInterval); err == nil {
 			storeInterval = interval
 		}
 	}
 
-	if envFileStoragePath := os.Getenv("FILE_STORAGE_PATH"); envFileStoragePath != "" {
+	if envFileStoragePath, ok := os.LookupEnv("FILE_STORAGE_PATH"); ok {
 		fileStoragePath = envFileStoragePath
 	}
 
-	if envRestore := os.Getenv("RESTORE"); envRestore != "" {
+	if envRestore, ok := os.LookupEnv("RESTORE"); ok {
 		if restoreValue, err := strconv.ParseBool(envRestore); err == nil {
 			restore = restoreValue
 		}
 	}
 
-	if envDatabaseDSN := os.Getenv("DATABASE_DSN"); envDatabaseDSN != "" {
+	if envDatabaseDSN, ok := os.LookupEnv("DATABASE_DSN"); ok {
 		databaseDSN = envDatabaseDSN
 	}
 
-	if envKey := os.Getenv("KEY"); envKey != "" {
+	if envKey, ok := os.LookupEnv("KEY"); ok {
 		key = envKey
+	}
+
+	if envAuditFile, ok := os.LookupEnv("AUDIT_FILE"); ok {
+		auditFile = envAuditFile
+	}
+
+	if envAuditURL, ok := os.LookupEnv("AUDIT_URL"); ok {
+		auditURL = envAuditURL
 	}
 
 	return &ServerConfig{
@@ -68,5 +82,7 @@ func LoadServerConfig() *ServerConfig {
 		Restore:         restore,
 		DatabaseDSN:     databaseDSN,
 		Key:             key,
+		AuditFile:       auditFile,
+		AuditURL:        auditURL,
 	}
 }

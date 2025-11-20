@@ -2,6 +2,7 @@ package repository
 
 import models "github.com/Mihklz/metrixcollector/internal/model"
 
+// Storage описывает базовые операции хранилища метрик.
 type Storage interface {
 	Update(metricType, name, value string) error
 	GetGauge(name string) (Gauge, bool)
@@ -13,7 +14,7 @@ type Storage interface {
 	LoadFromFile(filename string) error
 }
 
-// BatchStorage интерфейс для пакетных операций с метриками
+// BatchStorage расширяет Storage поддержкой пакетных операций.
 type BatchStorage interface {
 	Storage
 	// UpdateBatch обновляет множество метрик в рамках одной транзакции

@@ -6,11 +6,13 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/Mihklz/metrixcollector/internal/audit"
 	"github.com/Mihklz/metrixcollector/internal/logger"
 	"github.com/Mihklz/metrixcollector/internal/repository"
 )
 
-func NewUpdateHandler(storage repository.Storage) http.HandlerFunc {
+// NewUpdateHandler возвращает обработчик URL-based API для обновления метрик.
+func NewUpdateHandler(storage repository.Storage, auditPublisher *audit.AuditPublisher) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -36,6 +38,13 @@ func NewUpdateHandler(storage repository.Storage) http.HandlerFunc {
 			zap.String("name", name),
 			zap.String("value", value),
 		)
+
+		// Публикуем событие аудита после успешной обработки
+		if auditPublisher != nil && auditPublisher.HasObservers() {
+			event := audit.NewAuditEvent([]string{name}, audit.GetIPAddress(r))
+			auditPublisher.Publish(event)
+		}
+
 		w.WriteHeader(http.StatusOK)
 	}
 }
