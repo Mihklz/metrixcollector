@@ -44,13 +44,10 @@ func (p *AuditPublisher) Unsubscribe(observer Observer) {
 // Выполняется асинхронно, чтобы не блокировать основную обработку запросов.
 func (p *AuditPublisher) Publish(event *AuditEvent) {
 	p.mu.RLock()
-	observers := make([]Observer, len(p.observers))
-	copy(observers, p.observers)
-	p.mu.RUnlock()
-
-	// Отправляем событие каждому наблюдателю в отдельной горутине
-	for _, observer := range observers {
-		go func(obs Observer) {
+	// Запускаем горутины для каждого наблюдателя
+	for _, observer := range p.observers {
+		obs := observer // захватываем observer в локальную переменную для замыкания
+		go func() {
 			if err := obs.Notify(event); err != nil {
 				if logger.Log != nil {
 					logger.Log.Error("Failed to notify audit observer",
@@ -58,8 +55,9 @@ func (p *AuditPublisher) Publish(event *AuditEvent) {
 					)
 				}
 			}
-		}(observer)
+		}()
 	}
+	p.mu.RUnlock()
 }
 
 // HasObservers проверяет, есть ли зарегистрированные наблюдатели.

@@ -24,10 +24,7 @@ func NewFileAuditObserver(filePath string) *FileAuditObserver {
 
 // Notify записывает событие аудита в файл.
 func (f *FileAuditObserver) Notify(event *AuditEvent) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-
-	// Преобразуем событие в JSON
+	// Преобразуем событие в JSON вне критической секции
 	data, err := event.ToJSON()
 	if err != nil {
 		if logger.Log != nil {
@@ -38,9 +35,14 @@ func (f *FileAuditObserver) Notify(event *AuditEvent) error {
 		return err
 	}
 
-	// Открываем файл в режиме добавления (создаем, если не существует)
+	// Добавляем новую строку после JSON
+	data = append(data, '\n')
+
+	// Критическая секция: только операция записи в файл
+	f.mu.Lock()
 	file, err := os.OpenFile(f.filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
+		f.mu.Unlock()
 		if logger.Log != nil {
 			logger.Log.Error("Failed to open audit file",
 				zap.String("file", f.filePath),
@@ -49,13 +51,12 @@ func (f *FileAuditObserver) Notify(event *AuditEvent) error {
 		}
 		return err
 	}
-	defer file.Close()
 
-	// Добавляем новую строку после JSON
-	data = append(data, '\n')
+	_, err = file.Write(data)
+	file.Close()
+	f.mu.Unlock()
 
-	// Записываем данные в файл
-	if _, err := file.Write(data); err != nil {
+	if err != nil {
 		if logger.Log != nil {
 			logger.Log.Error("Failed to write audit event to file",
 				zap.String("file", f.filePath),
