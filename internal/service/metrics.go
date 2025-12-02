@@ -10,13 +10,13 @@ import (
 	"github.com/Mihklz/metrixcollector/internal/repository"
 )
 
-// MetricsService отвечает за бизнес-логику работы с метриками
+// MetricsService отвечает за бизнес-логику работы с метриками.
 type MetricsService struct {
 	storage repository.Storage
 	logger  *zap.Logger
 }
 
-// NewMetricsService создает новый сервис метрик
+// NewMetricsService создает новый сервис метрик.
 func NewMetricsService(storage repository.Storage) *MetricsService {
 	return &MetricsService{
 		storage: storage,
@@ -24,16 +24,17 @@ func NewMetricsService(storage repository.Storage) *MetricsService {
 	}
 }
 
-// ValidationError представляет ошибку валидации
+// ValidationError представляет ошибку валидации.
 type ValidationError struct {
 	Message string
 }
 
+// Error возвращает текст ошибки валидации.
 func (e *ValidationError) Error() string {
 	return e.Message
 }
 
-// IsValidationError проверяет, является ли ошибка ошибкой валидации
+// IsValidationError проверяет, является ли ошибка ошибкой валидации.
 func IsValidationError(err error) bool {
 	_, ok := err.(*ValidationError)
 	return ok
@@ -56,7 +57,7 @@ func (s *MetricsService) validateMetric(metric models.Metrics) error {
 	return nil
 }
 
-// UpdateBatch обновляет множество метрик с валидацией
+// UpdateBatch обновляет множество метрик с валидацией.
 func (s *MetricsService) UpdateBatch(metrics []models.Metrics) error {
 	if len(metrics) == 0 {
 		return &ValidationError{Message: "Batch cannot be empty"}
@@ -108,7 +109,7 @@ func (s *MetricsService) UpdateBatch(metrics []models.Metrics) error {
 	return nil
 }
 
-// UpdateSingle обновляет одну метрику с валидацией
+// UpdateSingle обновляет одну метрику с валидацией.
 func (s *MetricsService) UpdateSingle(metric models.Metrics) error {
 	if err := s.validateMetric(metric); err != nil {
 		s.logger.Error("Metric validation failed",
