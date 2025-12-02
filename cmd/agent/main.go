@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -14,7 +15,17 @@ import (
 	"github.com/Mihklz/metrixcollector/internal/logger"
 )
 
+var (
+	buildVersion string
+	buildDate    string
+	buildCommit  string
+)
+
 func main() {
+	fmt.Println("Build version:", valueOrNA(buildVersion))
+	fmt.Println("Build date:", valueOrNA(buildDate))
+	fmt.Println("Build commit:", valueOrNA(buildCommit))
+
 	// Инициализируем логгер
 	if err := logger.Initialize(); err != nil {
 		log.Fatalf("Failed to initialize logger: %v", err)
@@ -148,4 +159,11 @@ func runAgent(ctx context.Context, wg *sync.WaitGroup, cfg *config.AgentConfig, 
 			}
 		}
 	}
+}
+
+func valueOrNA(v string) string {
+	if v == "" {
+		return "N/A"
+	}
+	return v
 }
