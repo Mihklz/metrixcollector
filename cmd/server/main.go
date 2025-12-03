@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"go.uber.org/fx"
@@ -10,18 +9,11 @@ import (
 	"github.com/Mihklz/metrixcollector/internal/app"
 	"github.com/Mihklz/metrixcollector/internal/logger"
 	"github.com/Mihklz/metrixcollector/internal/server"
-)
-
-var (
-	buildVersion string
-	buildDate    string
-	buildCommit  string
+	"github.com/Mihklz/metrixcollector/internal/version"
 )
 
 func main() {
-	fmt.Println("Build version:", valueOrNA(buildVersion))
-	fmt.Println("Build date:", valueOrNA(buildDate))
-	fmt.Println("Build commit:", valueOrNA(buildCommit))
+	version.Print()
 
 	// Инициализируем логгер
 	if err := logger.Initialize(); err != nil {
@@ -68,11 +60,4 @@ func main() {
 
 	// Запускаем приложение и ждем сигналов завершения
 	fxApp.Run()
-}
-
-func valueOrNA(v string) string {
-	if v == "" {
-		return "N/A"
-	}
-	return v
 }

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -13,18 +12,11 @@ import (
 	"github.com/Mihklz/metrixcollector/internal/agent"
 	"github.com/Mihklz/metrixcollector/internal/config"
 	"github.com/Mihklz/metrixcollector/internal/logger"
-)
-
-var (
-	buildVersion string
-	buildDate    string
-	buildCommit  string
+	"github.com/Mihklz/metrixcollector/internal/version"
 )
 
 func main() {
-	fmt.Println("Build version:", valueOrNA(buildVersion))
-	fmt.Println("Build date:", valueOrNA(buildDate))
-	fmt.Println("Build commit:", valueOrNA(buildCommit))
+	version.Print()
 
 	// Инициализируем логгер
 	if err := logger.Initialize(); err != nil {
@@ -159,11 +151,4 @@ func runAgent(ctx context.Context, wg *sync.WaitGroup, cfg *config.AgentConfig, 
 			}
 		}
 	}
-}
-
-func valueOrNA(v string) string {
-	if v == "" {
-		return "N/A"
-	}
-	return v
 }
