@@ -9,9 +9,12 @@ import (
 	"github.com/Mihklz/metrixcollector/internal/app"
 	"github.com/Mihklz/metrixcollector/internal/logger"
 	"github.com/Mihklz/metrixcollector/internal/server"
+	"github.com/Mihklz/metrixcollector/internal/version"
 )
 
 func main() {
+	version.Print()
+
 	// Инициализируем логгер
 	if err := logger.Initialize(); err != nil {
 		log.Fatalf("Failed to initialize logger: %v", err)
